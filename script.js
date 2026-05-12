@@ -1,10 +1,13 @@
 // เชื่อมต่อกับ Google Sheets: https://docs.google.com/spreadsheets/d/1p2EFyCT75y_u9VKmeGIhodDWXZqGEPA3tzXWmPibdbk/edit
 // แทนที่ค่าด้านล่างนี้ด้วย Web App URL ที่ได้จากขั้นตอนการ Deploy Google Apps Script
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyHLnvQmRFTx6Qc9PYFcVFLj6ACZ_j6UX-Zci5iqwTtUaDQ618xsEMpo-7Qddc8bGSbg/exec"; // เปลี่ยนเป็น URL ของคุณหลัง Deploy
+const SCRIPT_URL = "ใส่_URL_ที่ได้จาก_Apps_Script_ตรงนี้"; // เปลี่ยนเป็น URL ของคุณหลัง Deploy
 
 let allPendingJobs = []; // เก็บข้อมูลงานทั้งหมดเพื่อใช้ในการค้นหา
 let currentViewData = { jobs: [], stock: [], payroll: [] };
 let stockChartInstance = null; // เก็บ Instance ของกราฟเพื่อทำลายก่อนวาดใหม่
+
+const JOBS_PER_PAGE = 10; // จำนวนงานที่แสดงต่อหน้า
+let currentPage = 1;
 let revenueChartInstance = null; // เก็บ Instance ของกราฟรายได้
 let categoryChartInstance = null; // เก็บ Instance ของกราฟประเภทชุด
 
@@ -607,18 +610,6 @@ async function updateStockQty(id, currentQty) {
   } catch (e) { alert("ผิดพลาด"); }
 }
 
-function displayJobsData(jobs, filterType) {
-  updateDashboard(jobs);
-
-  if (filterType === 'pending') {
-    allPendingJobs = jobs.filter(j => j.status === 'pending');
-  } else {
-    allPendingJobs = jobs.filter(j => j.status === 'accepted' || j.status === 'sewing');
-  }
-  
-  renderJobs(allPendingJobs);
-}
-
 function updateDashboard(jobs) {
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
@@ -698,15 +689,50 @@ function updateDashboard(jobs) {
   }
 }
 
-function renderJobs(jobs) {
+function renderJobs(jobsToRender) { // Renamed parameter for clarity
   const container = document.getElementById("job-list");
+  const paginationContainer = document.getElementById("pagination-controls");
   
-  if (jobs.length === 0) {
+  if (jobsToRender.length === 0) {
     container.innerHTML = "<p class='no-data'>ไม่พบรายการงานที่ตรงกับการค้นหา</p>";
+    if (paginationContainer) paginationContainer.innerHTML = ""; // Clear pagination
     return;
   }
 
-  container.innerHTML = jobs.map(job => `
+  const totalPages = Math.ceil(jobsToRender.length / JOBS_PER_PAGE);
+  const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
+  const endIndex = startIndex + JOBS_PER_PAGE;
+  const paginatedJobs = jobsToRender.slice(startIndex, endIndex);
+
+  container.innerHTML = paginatedJobs.map(job => `
+    <div class="job-card">
+      <h3>${job.job_detail}</h3>
+      <p><strong>ผู้โพสต์:</strong> ${job.customer_name}</p>
+      <p><strong>ติดต่อ:</strong> ${job.customer_phone || '-'}</p>
+      <p><strong>งบประมาณ:</strong> ฿${job.budget}</p>
+      ${renderActionButtons(job)}
+    </div>
+  `).join('');
+
+  renderPaginationControls(jobsToRender.length, totalPages);
+}
+
+function renderJobs(jobsToRender) { // Renamed parameter for clarity
+  const container = document.getElementById("job-list");
+  const paginationContainer = document.getElementById("pagination-controls");
+  
+  if (jobsToRender.length === 0) {
+    container.innerHTML = "<p class='no-data'>ไม่พบรายการงานที่ตรงกับการค้นหา</p>";
+    if (paginationContainer) paginationContainer.innerHTML = ""; // Clear pagination
+    return;
+  }
+
+  const totalPages = Math.ceil(jobsToRender.length / JOBS_PER_PAGE);
+  const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
+  const endIndex = startIndex + JOBS_PER_PAGE;
+  const paginatedJobs = jobsToRender.slice(startIndex, endIndex);
+
+  container.innerHTML = paginatedJobs.map(job => `
     <div class="job-card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <span class="status-badge ${job.status}">${job.status}</span>
@@ -719,6 +745,8 @@ function renderJobs(jobs) {
       ${renderActionButtons(job)}
     </div>
   `).join('');
+
+  renderPaginationControls(jobsToRender.length, totalPages);
 }
 
 function renderActionButtons(job) {
@@ -734,11 +762,47 @@ function renderActionButtons(job) {
 
 function filterJobs() {
   const query = document.getElementById("search-input").value.toLowerCase();
-  const filtered = allPendingJobs.filter(job => 
+  currentFilteredJobs = allPendingJobs.filter(job => // Filter from the full set of jobs for the current tab
     job.job_detail.toLowerCase().includes(query) || 
     job.customer_name.toLowerCase().includes(query)
   );
-  renderJobs(filtered);
+  currentPage = 1; // Reset to first page after filtering
+  renderJobs(currentFilteredJobs);
+}
+
+// New pagination functions
+function renderPaginationControls(totalItems, totalPages) {
+  const paginationContainer = document.getElementById("pagination-controls");
+  if (!paginationContainer) return;
+
+  if (totalPages <= 1) {
+    paginationContainer.innerHTML = "";
+    paginationContainer.style.display = 'none'; // Hide if no pagination needed
+    return;
+  }
+
+  paginationContainer.style.display = 'flex'; // Show if pagination needed
+  let paginationHtml = `
+    <button class="btn-pagination" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+      <i class="fas fa-chevron-left"></i> ก่อนหน้า
+    </button>
+    <span>หน้า ${currentPage} จาก ${totalPages}</span>
+    <button class="btn-pagination" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+      ถัดไป <i class="fas fa-chevron-right"></i>
+    </button>
+  `;
+  paginationContainer.innerHTML = paginationHtml;
+}
+
+function goToPage(pageNumber) {
+  const totalPages = Math.ceil(currentFilteredJobs.length / JOBS_PER_PAGE);
+  if (pageNumber < 1 || pageNumber > totalPages) return;
+
+  currentPage = pageNumber;
+  renderJobs(currentFilteredJobs);
+  // Scroll to top of job list for better UX
+  const jobList = document.getElementById("job-list");
+  if (jobList) jobList.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function updateStatus(id, newStatus) {

@@ -214,6 +214,10 @@ function doPost(e) {
 function getSheetData(ss, sheetName) {
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return [];
+  
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 1) return []; // ป้องกัน error กรณีแผ่นงานว่างเปล่า
+
   const values = sheet.getDataRange().getValues();
   const headers = values[0];
   return values.slice(1).map(row => {

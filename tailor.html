@@ -6,7 +6,8 @@
   <title>Tailor Management System</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- ใช้ defer เพื่อไม่ให้ขัดขวางการโหลดหน้าบนมือถือ -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -214,6 +215,11 @@
       <div id="job-list" class="job-grid">
         <div class="loader">กำลังโหลดข้อมูล...</div>
       </div>
+
+      <!-- Pagination Controls -->
+      <div id="pagination-controls" class="pagination-container" style="display: none;">
+        <!-- Pagination buttons will be rendered here by JavaScript -->
+      </div>
     </section>
 
     <!-- Change Password Modal -->
@@ -232,11 +238,6 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
-  <script>
-    window.onload = () => {
-      checkAuth();
-    };
-  </script>
+  <script src="script.js" defer></script>
 </body>
 </html>

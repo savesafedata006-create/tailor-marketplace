@@ -11,7 +11,8 @@
   <!-- Google Fonts & FontAwesome -->
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <!-- ย้าย html2canvas ไปโหลดภายหลังเนื่องจากไฟล์มีขนาดใหญ่ -->
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js" defer></script>
   <link rel="stylesheet"
         href="style.css">
 </head>
@@ -192,11 +193,6 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
-  <script>
-    window.onload = () => {
-      checkCustomerAuth();
-    };
-  </script>
+  <script src="script.js" defer></script>
 </body>
 </html>
