@@ -264,6 +264,8 @@ input:focus, textarea:focus {
 .status-badge.sewing { background: #dbeafe; color: #1e40af; border: 1px solid #60a5fa; }
 .status-badge.finished { background: #f0fdf4; color: #15803d; border: 1px solid #22c55e; }
 .status-badge.cancelled { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+.status-badge.rejected  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.status-badge.paid      { background: #ede9fe; color: #5b21b6; border: 1px solid #a78bfa; }
 
 .status-badge.low-stock {
   background: #fee2e2;

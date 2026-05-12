@@ -306,6 +306,19 @@
     document.addEventListener('DOMContentLoaded', () => {
       checkAuth();
       if (typeof initTheme === 'function') initTheme();
+      const fabBtn = document.createElement('button');
+      fabBtn.id = 'admin-fab-btn';
+      fabBtn.className = 'btn-pill';
+      fabBtn.style.cssText = 'position:fixed; right:18px; bottom:18px; z-index:9999; padding:10px 12px;';
+      fabBtn.innerHTML = '<i class="fas fa-tools"></i> Admin';
+      const fabMenu = document.createElement('div');
+      fabMenu.id = 'admin-fab-menu';
+      fabMenu.style.cssText = 'display:none; position:fixed; right:18px; bottom:56px; z-index:9999;';
+      fabMenu.innerHTML = '<a href="tailor.html" class="btn-secondary" style="display:block;margin-bottom:6px;">แดชบอร์ด</a><a href="stock.html" class="btn-secondary" style="display:block;margin-bottom:6px;">คลังสินค้า</a><a href="index.html" class="btn-secondary" style="display:block;">กลับหน้าเว็บ</a>';
+      document.body.appendChild(fabBtn);
+      document.body.appendChild(fabMenu);
+      fabBtn.addEventListener('click', () => { fabMenu.style.display = fabMenu.style.display === 'block' ? 'none' : 'block'; });
+      document.addEventListener('click', (e) => { if (!fabBtn.contains(e.target) && !fabMenu.contains(e.target)) fabMenu.style.display = 'none'; });
     });
   </script>
 </body>

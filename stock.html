@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>จัดการคลังสินค้า — TailorHub</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="main-header">
+      <div class="brand">
+        <div class="brand-icon"><i class="fas fa-boxes"></i></div>
+        <div class="brand-text"><h1>Tailor<span>Hub</span></h1><p>Admin - Stock</p></div>
+      </div>
+      <nav class="main-nav">
+        <a href="tailor.html">แดชบอร์ด</a>
+        <a href="stock.html" class="active">คลังสินค้า</a>
+        <a href="index.html">กลับหน้าเว็บ</a>
+      </nav>
+      <div class="header-actions">
+        <div class="boss-only">
+          <a href="tailor.html" class="btn-pill"><i class="fas fa-arrow-left"></i> กลับ</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="view reveal">
+      <div class="section-header">
+        <h2><i class="fas fa-warehouse"></i> จัดการคลังสินค้า</h2>
+        <p>เพิ่ม แก้ไข และตรวจสอบสต็อกทั้งหมดของร้าน</p>
+      </div>
+
+      <div class="toolbar" style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
+        <input type="text" id="stock-search" placeholder="ค้นหาสินค้า..." style="flex:1; padding:8px;">
+        <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" id="low-stock-filter" onchange="applyStockFilter()"> เฉพาะของใกล้หมด</label>
+        <button class="btn-primary" onclick="showAddStockModal()"><i class="fas fa-plus"></i> เพิ่มรายการ</button>
+        <button class="btn-secondary" onclick="exportStockCSV()"><i class="fas fa-file-csv"></i> ส่งออก CSV</button>
+      </div>
+
+      <div id="stock-list"></div>
+
+    </section>
+
+    <!-- Add Stock Modal -->
+    <div id="add-stock-modal" class="modal" style="display:none;">
+      <div class="receipt-content">
+        <div class="section-header"><h3><i class="fas fa-plus-circle"></i> เพิ่ม/แก้ไข สินค้า</h3></div>
+        <div class="form-group">
+          <input type="text" id="s-item-name" placeholder="ชื่อวัสดุ">
+          <input type="text" id="s-item-category" placeholder="หมวดหมู่">
+          <input type="text" id="s-item-unit" placeholder="หน่วย (เช่น เมตร ชิ้น)">
+          <input type="number" id="s-item-quantity" placeholder="จำนวนคงเหลือ">
+          <input type="number" id="s-item-unit-price" placeholder="ราคา/หน่วย">
+          <input type="number" id="s-item-min-threshold" placeholder="แจ้งเตือนเมื่อเหลือ <=">
+
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn-primary" onclick="saveStockItem()">บันทึก</button>
+            <button class="btn-secondary" onclick="closeAddStockModal()">ยกเลิก</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="script.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load stock from server on page open
+      (typeof checkAuth === 'function') && checkAuth();
+      setTimeout(() => { (typeof renderStock === 'function') && renderStock(currentViewData.stock || []); }, 200);
+
+      document.getElementById('stock-search')?.addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        const filtered = (currentViewData.stock || []).filter(s => (s.item_name || '').toLowerCase().includes(q) || (s.category || '').toLowerCase().includes(q));
+        renderStock(filtered);
+      });
+    });
+
+    function closeAddStockModal() {
+      const m = document.getElementById('add-stock-modal'); if (m) m.style.display = 'none';
+    }
+
+    function openAddStockModal(item) {
+      const m = document.getElementById('add-stock-modal'); if (m) m.style.display = 'block';
+      if (!item) {
+        document.getElementById('s-item-name').value = '';
+        document.getElementById('s-item-category').value = '';
+        document.getElementById('s-item-unit').value = '';
+        document.getElementById('s-item-quantity').value = '';
+        document.getElementById('s-item-unit-price').value = '';
+        document.getElementById('s-item-min-threshold').value = '';
+        m.dataset.editId = '';
+      } else {
+        document.getElementById('s-item-name').value = item.item_name || '';
+        document.getElementById('s-item-category').value = item.category || '';
+        document.getElementById('s-item-unit').value = item.unit || '';
+        document.getElementById('s-item-quantity').value = item.quantity || '';
+        document.getElementById('s-item-unit-price').value = item.unit_price || '';
+        document.getElementById('s-item-min-threshold').value = item.min_threshold || '';
+        m.dataset.editId = item.item_id || '';
+      }
+    }
+
+    function showAddStockModal() { openAddStockModal(); }
+
+    async function saveStockItem() {
+      const id = document.getElementById('add-stock-modal').dataset.editId || '';
+      const payload = {
+        action: id ? 'update_stock' : 'add_stock',
+        item_id: id,
+        item_name: document.getElementById('s-item-name').value,
+        category: document.getElementById('s-item-category').value,
+        unit: document.getElementById('s-item-unit').value,
+        quantity: document.getElementById('s-item-quantity').value,
+        unit_price: document.getElementById('s-item-unit-price').value,
+        min_threshold: document.getElementById('s-item-min-threshold').value
+      };
+
+      try {
+        if (typeof apiPost === 'function') {
+          const res = await apiPost(payload);
+          if (res.status === 'success') {
+            alert('บันทึกข้อมูลสต๊อกเรียบร้อย');
+            closeAddStockModal();
+            // Refresh data
+            const response = await fetch(SCRIPT_URL); const data = await response.json(); currentViewData = data; renderStock(data.stock || []);
+          } else alert(res.message || 'ไม่สามารถบันทึกได้');
+        } else {
+          alert('ฟังก์ชัน apiPost ไม่พร้อมใช้งาน');
+        }
+      } catch (e) { console.error(e); alert('เกิดข้อผิดพลาด'); }
+    }
+
+    function exportStockCSV() {
+      const data = currentViewData.stock || [];
+      if (!data.length) return alert('ไม่มีข้อมูลสต๊อกให้ส่งออก');
+      const header = ['item_id','item_name','category','unit','quantity','unit_price','min_threshold'];
+      const rows = data.map(r => header.map(h => `"${(r[h]||'').toString().replace(/"/g,'""')}"`).join(','));
+      const csv = [header.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'stock_export.csv'; a.click(); URL.revokeObjectURL(url);
+    }
+  </script>
+  <!-- Floating Admin FAB -->
+  <div id="admin-fab" style="position:fixed; right:18px; bottom:18px; z-index:9999;">
+    <button id="admin-fab-btn" class="btn-pill" style="padding:10px 12px; display:flex; align-items:center; gap:8px;"><i class="fas fa-tools"></i> Admin</button>
+    <div id="admin-fab-menu" style="display:none; position:absolute; right:0; bottom:56px;">
+      <a href="tailor.html" class="btn-secondary" style="display:block; margin-bottom:6px;">แดชบอร์ด</a>
+      <a href="stock.html" class="btn-secondary" style="display:block; margin-bottom:6px;">คลังสินค้า</a>
+      <a href="index.html" class="btn-secondary" style="display:block;">กลับหน้าเว็บ</a>
+    </div>
+  </div>
+  <script>
+    (function(){
+      const btn = document.getElementById('admin-fab-btn');
+      const menu = document.getElementById('admin-fab-menu');
+      if (!btn || !menu) return;
+      btn.addEventListener('click', () => { menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; });
+      document.addEventListener('click', (e) => { if (!btn.contains(e.target) && !menu.contains(e.target)) menu.style.display = 'none'; });
+    })();
+  </script>
+</body>
+</html>

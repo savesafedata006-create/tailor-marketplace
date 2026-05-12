@@ -79,41 +79,14 @@
       </div>
     </section>
 
-    <!-- Auth Section -->
-    <section id="auth-view" class="view reveal">
+    <!-- Auth Section (disabled) -->
+    <section id="auth-view" class="view reveal" style="display:none;">
       <div class="section-header">
-        <h2><i class="fas fa-user-circle"></i> สมาชิก / เข้าสู่ระบบ</h2>
-        <p>เข้าสู่ระบบเพื่อติดตามสถานะงานของคุณ</p>
+        <h2><i class="fas fa-user-circle"></i> ระบบล็อคอินถูกปิดชั่วคราว</h2>
+        <p>ฟีเจอร์ล็อคอินถูกปิดสำหรับตอนนี้ ระบบจะทำงานในโหมด Guest เพื่อให้ทดลองใช้งานได้</p>
       </div>
-      <div class="form-group" id="login-form">
-        <input type="text" id="login-username" placeholder="ชื่อผู้ใช้งาน">
-        <input type="password" id="login-password" placeholder="รหัสผ่าน">
-        <label style="font-size: 13px; color: var(--text-sub); display: flex; align-items: center; gap: 5px; cursor: pointer;">
-          <input type="checkbox" id="login-remember"> จดจำฉันในระบบ
-        </label>
-        <button class="btn-primary" onclick="loginCustomer()">เข้าสู่ระบบ</button>
-        <div style="display:flex; justify-content: space-between; font-size: 13px; margin-top: 10px;">
-          <a href="#" onclick="toggleAuth('forgot')">ลืมรหัสผ่าน?</a>
-          <span>ยังไม่มีบัญชี? <a href="#" onclick="toggleAuth('register')">สมัครสมาชิก</a></span>
-        </div>
-        <a href="#" onclick="fillDemoLogin('customer')" class="btn-demo">
-          <i class="fas fa-vial"></i> เข้าใช้งานระบบ Demo (Admin)
-        </a>
-      </div>
-      <div class="form-group" id="register-form" style="display:none;">
-        <input type="text" id="reg-username" placeholder="ชื่อผู้ใช้งาน">
-        <input type="password" id="reg-password" placeholder="รหัสผ่าน">
-        <input type="text" id="reg-fullname" placeholder="ชื่อ-นามสกุล">
-        <input type="tel" id="reg-phone" placeholder="เบอร์โทรศัพท์">
-        <button class="btn-primary" onclick="registerCustomer()" style="background:var(--success)">ลงทะเบียน</button>
-        <p style="text-align:center; font-size:14px;">มีบัญชีอยู่แล้ว? <a href="#" onclick="toggleAuth('login')">เข้าสู่ระบบ</a></p>
-      </div>
-      <div class="form-group" id="forgot-form" style="display:none;">
-        <input type="text" id="forgot-username" placeholder="ชื่อผู้ใช้งาน">
-        <input type="tel" id="forgot-phone" placeholder="เบอร์โทรศัพท์ที่ลงทะเบียน">
-        <input type="password" id="forgot-new-pass" placeholder="รหัสผ่านใหม่">
-        <button class="btn-primary" onclick="handleResetPassword('customer')">ตั้งรหัสผ่านใหม่</button>
-        <p style="text-align:center; font-size:14px;"><a href="#" onclick="toggleAuth('login')">กลับไปหน้าล็อคอิน</a></p>
+      <div class="form-group">
+        <p style="color:var(--text-sub)">เข้าสู่ระบบถูกปิดชั่วคราว — คุณจะถูกตั้งเป็นผู้ใช้งานทั่วไป (Guest)</p>
       </div>
     </section>
 
@@ -328,11 +301,34 @@
   </div>
 
   <script src="script.js" defer></script>
+  <!-- Floating Admin Access -->
+  <div id="admin-fab" class="admin-fab" style="position:fixed; right:18px; bottom:18px; z-index:9999;">
+    <button id="admin-fab-btn" class="btn-pill" style="padding:10px 12px; display:flex; align-items:center; gap:8px;">
+      <i class="fas fa-tools"></i> Admin
+    </button>
+    <div id="admin-fab-menu" class="admin-fab-menu" style="display:none; position:absolute; right:0; bottom:56px;">
+      <a href="tailor.html" class="btn-secondary" style="display:block; margin-bottom:6px;">แดชบอร์ด</a>
+      <a href="stock.html" class="btn-secondary" style="display:block; margin-bottom:6px;">คลังสินค้า</a>
+      <a href="index.html" class="btn-secondary" style="display:block;">กลับหน้าเว็บ</a>
+    </div>
+  </div>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // Guest mode: set a temporary guest session so the site works without login
+      if (!sessionStorage.getItem('userId') && !localStorage.getItem('userId')) {
+        sessionStorage.setItem('userRole', 'guest');
+        sessionStorage.setItem('userName', 'Guest User');
+        sessionStorage.setItem('userId', 'GUEST-001');
+      }
       checkCustomerAuth();
       if (typeof initScrollReveal === 'function') initScrollReveal();
       if (typeof initPortalLongPress === 'function') initPortalLongPress();
+      const fabBtn = document.getElementById('admin-fab-btn');
+      const fabMenu = document.getElementById('admin-fab-menu');
+      if (fabBtn && fabMenu) {
+        fabBtn.addEventListener('click', () => { fabMenu.style.display = fabMenu.style.display === 'block' ? 'none' : 'block'; });
+        document.addEventListener('click', (e) => { if (!fabBtn.contains(e.target) && !fabMenu.contains(e.target)) fabMenu.style.display = 'none'; });
+      }
     });
   </script>
 </body>

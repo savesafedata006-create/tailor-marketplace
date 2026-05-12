@@ -21,6 +21,15 @@ function debounce(func, timeout = 300) {
   };
 }
 
+// Run function when browser is idle or after short timeout (fallback)
+function runWhenIdle(fn, options = { timeout: 200 }) {
+  if (typeof window === 'undefined') return setTimeout(fn, 0);
+  if ('requestIdleCallback' in window) {
+    return requestIdleCallback(fn, options);
+  }
+  return setTimeout(fn, options.timeout || 200);
+}
+
 async function sendData() {
   const btn = document.querySelector("#customer-view .btn-primary");
   
@@ -33,6 +42,7 @@ async function sendData() {
     job_category: document.getElementById("job_category").value,
     budget: document.getElementById("budget").value,
     user_id: sessionStorage.getItem("userId") || "GUEST",
+    referral_code: document.getElementById("referral_code")?.value || "",
     measurements: JSON.stringify({
       chest: document.getElementById("m-chest")?.value || "",
       waist: document.getElementById("m-waist")?.value || "",
@@ -378,57 +388,58 @@ async function loadCustomerJobs() {
       return;
     }
 
-    container.innerHTML = myJobs.map(job => `
-      <div class="job-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <span class="status-badge ${job.status}">
-            ${job.status === 'pending' ? 'รอรับงาน' :
-              job.status === 'accepted' ? 'รับงานแล้ว' :
-              job.status === 'sewing' ? 'กำลังเย็บ' :
-              job.status === 'finished' ? 'เสร็จแล้ว' :
-              job.status === 'rejected' ? 'ถูกปฏิเสธ' : 'ยกเลิกแล้ว'}
-          </span>
-          <small>ID: ${job.rn}</small>
-        </div>
-        <h3>${job.job_detail}</h3>
-        <p><strong>งบประมาณ:</strong> ฿${Number(job.budget).toLocaleString()}</p>
-        <p><strong>ช่างผู้ดูแล:</strong> ${job.tailor_name || 'รอดำเนินการ'}</p>
-        
-        ${job.progress_photo ? `
-          <div style="margin-top: 10px;">
-            <a href="${job.progress_photo}" target="_blank" class="btn-demo" style="border-style: solid; font-size: 12px; padding: 8px;">
-              <i class="fas fa-camera"></i> ดูรูปความคืบหน้างานเย็บ
-            </a>
-          </div>
-        ` : ''}
+    // Render jobs in small chunks to avoid freezing the UI on low-power devices
+    container.innerHTML = '';
+    const CHUNK = 6; // adjust as needed for performance vs perceived speed
+    let idx = 0;
 
-        ${(job.status === 'pending' || job.status === 'accepted') ? `
-          <button class="btn-logout"
-                  style="width: 100%; margin-top: 10px; border-color: var(--warning); color: var(--warning);"
-                  onclick="cancelOrder('${job.id}')">
-            <i class="fas fa-times-circle"></i> ยกเลิกการจ้างงาน
-          </button>
-        ` : ''}
+    function renderChunk() {
+      const slice = myJobs.slice(idx, idx + CHUNK);
+      const html = slice.map(job => {
+        const statusLabel = { pending: 'รอรับงาน', accepted: 'รับงานแล้ว', sewing: 'กำลังเย็บ', finished: 'เสร็จแล้ว', rejected: 'ถูกปฏิเสธ', cancelled: 'ยกเลิกแล้ว', paid: 'ชำระเงินแล้ว' };
+        const ratingStars = job.rating
+          ? `<div class="rating-stars">${'★'.repeat(Number(job.rating))}${'☆'.repeat(5 - Number(job.rating))}<span style="color:var(--text-sub);font-size:12px;margin-left:5px;">(${job.rating}/5)</span></div>`
+          : '';
 
-        ${job.status === 'finished' && !job.rating ? `
-          <button class="btn-primary" 
-                  style="width: 100%; margin-top: 10px; background: var(--success);" 
-                  onclick="confirmAndRateJob('${job.id}')">
-            <i class="fas fa-star"></i> ยืนยันรับงานและให้คะแนน
-          </button>
-          <button class="btn-logout" 
-                  style="width: 100%; margin-top: 5px; border-color: var(--secondary); color: var(--secondary);" 
-                  onclick="requestRevision('${job.id}')">
-            <i class="fas fa-tools"></i> ขอแก้ไขงาน/ส่งเคลม
-          </button>
-        ` : job.rating ? `
-          <div class="rating-stars">
-            ${'★'.repeat(Number(job.rating))}${'☆'.repeat(5 - Number(job.rating))}
-            <span style="color: var(--text-sub); font-size: 12px; margin-left: 5px;">(${job.rating}/5)</span>
+        let actionButtons = '';
+        if (job.status === 'pending' || job.status === 'accepted') {
+          actionButtons = `<button class="btn-logout" style="width:100%;margin-top:10px;border-color:var(--warning);color:var(--warning);" onclick="cancelOrder('${job.id}')"><i class="fas fa-times-circle"></i> ยกเลิกการจ้างงาน</button>`;
+        } else if (job.status === 'finished' && !job.rating) {
+          actionButtons = `<button class="btn-primary" style="width:100%;margin-top:10px;background:var(--success);" onclick="confirmAndRateJob('${job.id}')"><i class="fas fa-star"></i> ยืนยันรับงานและให้คะแนน</button><button class="btn-logout" style="width:100%;margin-top:5px;border-color:var(--secondary);color:var(--secondary);" onclick="requestRevision('${job.id}')"><i class="fas fa-tools"></i> ขอแก้ไขงาน/ส่งเคลม</button>`;
+        } else if (job.status === 'finished' && job.rating) {
+          actionButtons = `${ratingStars}<button class="btn-primary" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#5b21b6,#7c3aed);" onclick="payFinalPrice('${job.id}', ${Number(job.budget) || 0})"><i class="fas fa-credit-card"></i> ชำระเงินงวดสุดท้าย ฿${Number(job.budget).toLocaleString()}</button>`;
+        } else if (job.status === 'paid') {
+          actionButtons = `${ratingStars}<div style="margin-top:8px;padding:8px 12px;background:#ede9fe;border-radius:10px;color:#5b21b6;font-size:13px;display:flex;align-items:center;gap:6px;"><i class="fas fa-check-circle"></i> ชำระเงินเรียบร้อยแล้ว ฿${Number(job.budget).toLocaleString()}</div>`;
+        } else {
+          actionButtons = ratingStars;
+        }
+
+        return `
+        <div class="job-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <span class="status-badge ${job.status}">${statusLabel[job.status] || job.status}</span>
+            <small>ID: ${job.rn}</small>
           </div>
-        ` : ''}
-      </div>
-    `).join('');
+          <h3>${job.job_detail}</h3>
+          <p><strong>งบประมาณ:</strong> ฿${Number(job.budget).toLocaleString()}</p>
+          <p><strong>ช่างผู้ดูแล:</strong> ${job.tailor_name || 'รอดำเนินการ'}</p>
+
+          ${job.progress_photo ? `<div style="margin-top:10px;"><a href="${job.progress_photo}" target="_blank" class="btn-demo" style="border-style:solid;font-size:12px;padding:8px;"><i class="fas fa-camera"></i> ดูรูปความคืบหน้างานเย็บ</a></div>` : ''}
+
+          ${job.dispute_notes ? `<div style="margin-top:8px;padding:8px 12px;background:#fef9c3;border-radius:10px;font-size:12px;color:#854d0e;border:1px solid #facc15;"><i class="fas fa-exclamation-circle"></i> <strong>หมายเหตุเคลม:</strong> ${job.dispute_notes}</div>` : ''}
+
+          ${actionButtons}
+        </div>`;
+      }).join('');
+
+      container.insertAdjacentHTML('beforeend', html);
+      idx += CHUNK;
+      if (idx < myJobs.length) {
+        setTimeout(renderChunk, 50);
+      }
+    }
+
+    renderChunk();
   } catch (e) { container.innerHTML = "<p>ไม่สามารถโหลดข้อมูลได้</p>"; }
 }
 
@@ -469,15 +480,32 @@ async function loadJobs(filterType = 'pending', forceRefresh = false) {
     currentFilteredJobs = allPendingJobs;
     currentPage = 1;
 
+    // Critical: update dashboard and render job list immediately
     updateDashboard(data.jobs);
     renderJobs(currentFilteredJobs);
-    renderStock(data.stock);
-    renderStockChart(data.stock);
-    renderRevenueChart(data.jobs);
-    renderCategoryChart(data.jobs);
-    renderUsers(data.users);
-    renderTailorStats(data.jobs, data.payroll);
-    renderPayrollManager(data.payroll);
+
+    // Defer heavier or non-critical rendering to idle time to avoid blocking mobile
+    runWhenIdle(() => {
+      try {
+        renderStock(data.stock);
+        renderStockChart(data.stock);
+      } catch (e) { console.warn('deferred stock render failed', e); }
+    });
+
+    runWhenIdle(() => {
+      try {
+        renderRevenueChart(data.jobs);
+        renderCategoryChart(data.jobs);
+      } catch (e) { console.warn('deferred chart render failed', e); }
+    });
+
+    runWhenIdle(() => {
+      try {
+        renderUsers(data.users);
+        renderTailorStats(data.jobs, data.payroll);
+        renderPayrollManager(data.payroll);
+      } catch (e) { console.warn('deferred user/payroll render failed', e); }
+    });
   } catch (error) {
     container.innerHTML = "<p>ไม่สามารถโหลดข้อมูลได้</p>";
   }
@@ -932,37 +960,77 @@ function renderRejectedAnalysis(jobs) {
   const container = document.getElementById('rejected-list');
   if (!container) return;
 
-  const rejectedJobs = jobs.filter(j => j.status === 'rejected');
+  const rejectedJobs = jobs.filter(j => j.status === 'rejected' || j.status === 'cancelled');
+  const disputedJobs = jobs.filter(j => j.dispute_notes && j.dispute_notes.trim() !== '');
 
-  if (rejectedJobs.length === 0) {
-    container.innerHTML = "<p class='no-data'>ไม่มีประวัติการปฏิเสธงาน</p>";
+  let html = '';
+
+  if (rejectedJobs.length === 0 && disputedJobs.length === 0) {
+    container.innerHTML = "<p class='no-data'>ไม่มีประวัติการปฏิเสธหรือการเคลมงาน</p>";
     return;
   }
 
-  container.innerHTML = `
-    <table class="stats-table">
-      <thead>
-        <tr>
-          <th>เลขที่งาน</th>
-          <th>ลูกค้า</th>
-          <th>ประเภท</th>
-          <th>งบประมาณ</th>
-          <th>สาเหตุที่ปฏิเสธ</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rejectedJobs.map(j => `
-          <tr>
-            <td><strong>${j.rn}</strong></td>
-            <td>${j.customer_name}</td>
-            <td>${j.job_category}</td>
-            <td>฿${Number(j.budget).toLocaleString()}</td>
-            <td style="color: var(--warning);">${j.cancellation_reason || 'ไม่ได้ระบุ'}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
+  if (rejectedJobs.length > 0) {
+    html += `
+      <h4 style="margin:0 0 10px;font-size:14px;color:var(--warning);"><i class="fas fa-ban"></i> งานที่ปฏิเสธ / ยกเลิก (${rejectedJobs.length} รายการ)</h4>
+      <div class="table-container" style="margin-bottom:20px;">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>เลขที่งาน</th>
+              <th>ลูกค้า</th>
+              <th>ประเภท</th>
+              <th>งบประมาณ</th>
+              <th>สถานะ</th>
+              <th>สาเหตุ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rejectedJobs.map(j => `
+              <tr>
+                <td><strong>${j.rn}</strong></td>
+                <td>${j.customer_name}</td>
+                <td>${j.job_category || '-'}</td>
+                <td>฿${Number(j.budget).toLocaleString()}</td>
+                <td><span class="status-badge ${j.status}">${j.status === 'rejected' ? 'ถูกปฏิเสธ' : 'ยกเลิกแล้ว'}</span></td>
+                <td style="color:var(--warning);">${j.cancellation_reason || 'ไม่ได้ระบุ'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  if (disputedJobs.length > 0) {
+    html += `
+      <h4 style="margin:0 0 10px;font-size:14px;color:#854d0e;"><i class="fas fa-exclamation-triangle"></i> งานที่ลูกค้าส่งเคลม/แจ้งปัญหา (${disputedJobs.length} รายการ)</h4>
+      <div class="table-container">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>เลขที่งาน</th>
+              <th>ลูกค้า</th>
+              <th>ช่าง</th>
+              <th>สถานะ</th>
+              <th>รายละเอียดเคลม</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${disputedJobs.map(j => `
+              <tr>
+                <td><strong>${j.rn}</strong></td>
+                <td>${j.customer_name}</td>
+                <td>${j.tailor_name || '-'}</td>
+                <td><span class="status-badge ${j.status}">${j.status}</span></td>
+                <td style="color:#854d0e;"><i class="fas fa-exclamation-circle"></i> ${j.dispute_notes}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  container.innerHTML = html;
 }
 
 function renderJobs(jobsToRender) { // Renamed parameter for clarity
@@ -980,7 +1048,7 @@ function renderJobs(jobsToRender) { // Renamed parameter for clarity
   const endIndex = startIndex + JOBS_PER_PAGE;
   const paginatedJobs = jobsToRender.slice(startIndex, endIndex);
 
-  const statusLabelMap = { pending: 'รอรับงาน', accepted: 'รับงานแล้ว', sewing: 'กำลังเย็บ', finished: 'เสร็จสมบูรณ์', cancelled: 'ยกเลิกแล้ว', rejected: 'ถูกปฏิเสธ' };
+  const statusLabelMap = { pending: 'รอรับงาน', accepted: 'รับงานแล้ว', sewing: 'กำลังเย็บ', finished: 'เสร็จสมบูรณ์', cancelled: 'ยกเลิกแล้ว', rejected: 'ถูกปฏิเสธ', paid: 'ชำระเงินแล้ว' };
 
   container.innerHTML = paginatedJobs.map(job => {
     let m = { chest: '-', waist: '-', hips: '-', length: '-', shoulder: '-' };
@@ -1009,7 +1077,13 @@ function renderJobs(jobsToRender) { // Renamed parameter for clarity
 
       <p><strong>ผู้โพสต์:</strong> ${job.customer_name}</p>
       <p><strong>ติดต่อ:</strong> ${job.customer_phone || '-'}</p>
-      <p><strong>งบประมาณ:</strong> ฿${job.budget}</p>
+      <p><strong>งบประมาณ:</strong> ฿${Number(job.budget).toLocaleString()}</p>
+
+      ${job.dispute_notes ? `
+        <div style="margin:8px 0;padding:10px 14px;background:#fef9c3;border-radius:10px;font-size:13px;color:#854d0e;border:1px solid #facc15;">
+          <i class="fas fa-exclamation-triangle"></i> <strong>ลูกค้าส่งเคลม:</strong> ${job.dispute_notes}
+        </div>` : ''}
+
       ${renderActionButtons(job)}
     </div>
     `;
@@ -1046,8 +1120,67 @@ function renderActionButtons(job) {
     `;
   } else if (job.status === 'finished') {
     return costBtn;
+  } else if (job.status === 'paid') {
+    return `
+      <div style="margin-top:8px;padding:8px 12px;background:#ede9fe;border-radius:10px;color:#5b21b6;font-size:13px;display:flex;align-items:center;gap:6px;">
+        <i class="fas fa-check-circle"></i> ลูกค้าชำระเงินเรียบร้อยแล้ว
+      </div>
+      ${costBtn}`;
   }
   return '';
+}
+
+// Render a Pay button for customers when appropriate
+function renderPayButtonForCustomer(job) {
+  try {
+    const role = sessionStorage.getItem('userRole') || localStorage.getItem('userRole');
+    const userId = sessionStorage.getItem('userId') || localStorage.getItem('userId');
+    // Only show to logged-in customers who own the job and when status is accepted (or pending if you support paying before work)
+    if (!role || role === 'boss' || role === 'tailor') return ''; // not a customer view
+    if (!userId || job.user_id !== userId) return '';
+    if (job.status !== 'accepted' && job.status !== 'pending') return '';
+
+    return `
+      <button class="btn-primary" style="margin-top:8px; width:100%; background:linear-gradient(135deg,#16a34a,#059669);" onclick="payFinalPrice('${job.id}', ${Number(job.budget) || 0})">
+        <i class="fas fa-credit-card"></i> ชำระเงิน (ชำระเงินปลายทาง / ทดลอง)
+      </button>
+    `;
+  } catch (e) { return ''; }
+}
+
+// Small fetch wrapper to standardize POST calls
+async function apiPost(payload) {
+  try {
+    const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+    return await res.json();
+  } catch (error) {
+    console.error('apiPost error', error);
+    return { status: 'error', message: 'Connection error' };
+  }
+}
+
+// Customer action: pay final price (calls backend action=pay_final_price)
+async function payFinalPrice(jobId, amount) {
+  const userId = sessionStorage.getItem('userId') || localStorage.getItem('userId');
+  if (!userId) return alert('กรุณาเข้าสู่ระบบก่อนทำการชำระเงิน');
+
+  if (!confirm(`ยืนยันการชำระเงินยอดรวม ฿${Number(amount).toLocaleString()}?`)) return;
+
+  try {
+    const payload = { action: 'pay_final_price', id: jobId, user_id: userId };
+    const result = await apiPost(payload);
+    if (result.status === 'success') {
+      alert('บันทึกการชำระเงินเรียบร้อยแล้ว');
+      // Refresh customer's job list or general jobs depending on which view
+      loadCustomerJobs();
+      setTimeout(() => loadJobs('pending', true), 400);
+    } else {
+      alert(result.message || 'ไม่สามารถบันทึกการชำระเงินได้');
+    }
+  } catch (e) {
+    console.error('payFinalPrice error', e);
+    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+  }
 }
 
 function filterJobs() {
@@ -1262,25 +1395,33 @@ async function loadNotifications() {
       return;
     }
 
-    const statusLabel = { pending: 'รอรับงาน', accepted: 'รับงานแล้ว', sewing: 'กำลังเย็บ', finished: 'เสร็จสมบูรณ์', cancelled: 'ยกเลิกแล้ว', rejected: 'ถูกปฏิเสธ' };
-    const statusIcon  = { pending: 'fa-clock', accepted: 'fa-check', sewing: 'fa-cut', finished: 'fa-check-double', cancelled: 'fa-times-circle', rejected: 'fa-ban' };
+    const statusLabel = { pending: 'รอรับงาน', accepted: 'รับงานแล้ว', sewing: 'กำลังเย็บ', finished: 'เสร็จสมบูรณ์', cancelled: 'ยกเลิกแล้ว', rejected: 'ถูกปฏิเสธ', paid: 'ชำระเงินแล้ว' };
+    const statusIcon  = { pending: 'fa-clock', accepted: 'fa-check', sewing: 'fa-cut', finished: 'fa-check-double', cancelled: 'fa-times-circle', rejected: 'fa-ban', paid: 'fa-credit-card' };
 
-    container.innerHTML = myJobs.slice().reverse().map(job => `
-      <div class="job-card fade-in" style="border-left: 4px solid var(--primary);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <span class="status-badge ${job.status}">
-            <i class="fas ${statusIcon[job.status] || 'fa-info-circle'}"></i>
-            ${statusLabel[job.status] || job.status}
-          </span>
-          <small style="color:var(--text-sub);">${job.rn}</small>
+    // Chunk notifications to avoid blocking
+    container.innerHTML = '';
+    const notes = myJobs.slice().reverse();
+    const CHUNK = 8;
+    let i = 0;
+    function renderNotesChunk() {
+      const slice = notes.slice(i, i + CHUNK);
+      const html = slice.map(job => `
+        <div class="job-card fade-in" style="border-left: 4px solid var(--primary);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span class="status-badge ${job.status}"><i class="fas ${statusIcon[job.status] || 'fa-info-circle'}"></i> ${statusLabel[job.status] || job.status}</span>
+            <small style="color:var(--text-sub);">${job.rn}</small>
+          </div>
+          <p style="margin:4px 0; font-size:14px;"><strong>${job.job_detail}</strong></p>
+          ${job.tailor_name ? `<p style="margin:4px 0; font-size:13px; color:var(--text-sub);">ช่าง: ${job.tailor_name}</p>` : ''}
+          ${(job.status === 'cancelled' || job.status === 'rejected') && job.cancellation_reason ? `<p style="margin:4px 0; font-size:12px; color:var(--warning);"><i class="fas fa-exclamation-circle"></i> ${job.cancellation_reason}</p>` : ''}
+          <small style="color:var(--text-sub);">${job.created_at ? job.created_at.split('T')[0] : ''}</small>
         </div>
-        <p style="margin:4px 0; font-size:14px;"><strong>${job.job_detail}</strong></p>
-        ${job.tailor_name ? `<p style="margin:4px 0; font-size:13px; color:var(--text-sub);">ช่าง: ${job.tailor_name}</p>` : ''}
-        ${(job.status === 'cancelled' || job.status === 'rejected') && job.cancellation_reason
-          ? `<p style="margin:4px 0; font-size:12px; color:var(--warning);"><i class="fas fa-exclamation-circle"></i> ${job.cancellation_reason}</p>` : ''}
-        <small style="color:var(--text-sub);">${job.created_at ? job.created_at.split('T')[0] : ''}</small>
-      </div>
-    `).join('');
+      `).join('');
+      container.insertAdjacentHTML('beforeend', html);
+      i += CHUNK;
+      if (i < notes.length) setTimeout(renderNotesChunk, 40);
+    }
+    renderNotesChunk();
   } catch (e) {
     container.innerHTML = "<p class='no-data'>ไม่สามารถโหลดข้อมูลได้</p>";
   }
