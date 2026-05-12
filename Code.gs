@@ -1,54 +1,214 @@
 function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("JOBS") || ss.insertSheet("JOBS");
   
-  // 1. สร้างหัวตาราง JOBS
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(["id", "rn", "customer_name", "customer_phone", "customer_line", "job_detail", "job_category", "budget", "status", "tailor_name", "user_id", "created_at"]);
-  }
-  
-  // 2. สร้างหัวตาราง USERS และ User เริ่มต้น
-  if (!ss.getSheetByName("USERS")) {
-    const userSheet = ss.insertSheet("USERS");
-    userSheet.appendRow(["user_id", "username", "password", "role", "full_name", "phone"]);
-    // เพิ่ม User เริ่มต้น (Boss)
-    userSheet.appendRow([Utilities.getUuid(), "admin", "1234", "boss", "เจ้าของร้าน", "0000000000"]);
-  }
-  
-  // 3. สร้างหัวตาราง STOCK และข้อมูลตัวอย่าง
-  if (!ss.getSheetByName("STOCK")) {
-    ss.insertSheet("STOCK").appendRow(["item_id", "category", "item_name", "quantity", "unit", "unit_price", "min_threshold", "last_updated"]);
-    ss.getSheetByName("STOCK").appendRow(["STK-001", "ผ้า", "ผ้าไหม", "50", "เมตร", "500", "10", new Date()]);
+  // 1. ตรวจสอบ/สร้างแผ่นงาน JOBS
+  let jobsSheet = ss.getSheetByName("JOBS") || ss.insertSheet("JOBS");
+  if (jobsSheet.getLastRow() === 0) {
+    jobsSheet.appendRow(["id", "rn", "customer_name", "customer_phone", "customer_line", "job_detail", "job_category", "budget", "status", "tailor_name", "user_id", "created_at"]);
   }
 
-  // 4. สร้างหัวตาราง LOGS
-  if (!ss.getSheetByName("LOGS")) {
-    const logSheet = ss.insertSheet("LOGS");
+  // 2. ตรวจสอบ/สร้างแผ่นงาน USERS
+  let userSheet = ss.getSheetByName("USERS") || ss.insertSheet("USERS"); 
+  if (userSheet.getLastRow() === 0) {
+    userSheet.appendRow(["user_id", "username", "password", "role", "full_name", "phone"]);
+    userSheet.appendRow([Utilities.getUuid(), "admin", "1234", "boss", "เจ้าของร้าน", "0000000000"]);
+  }
+
+  // 3. ตรวจสอบ/สร้างแผ่นงาน STOCK
+  let stockSheet = ss.getSheetByName("STOCK") || ss.insertSheet("STOCK"); 
+  if (stockSheet.getLastRow() === 0) {
+    stockSheet.appendRow(["item_id", "category", "item_name", "quantity", "unit", "unit_price", "min_threshold", "last_updated"]);
+    stockSheet.appendRow(["STK-001", "ผ้า", "ผ้าไหม", "50", "เมตร", "500", "10", new Date()]);
+  }
+
+  // 4. ตรวจสอบ/สร้างแผ่นงาน LOGS
+  let logSheet = ss.getSheetByName("LOGS") || ss.insertSheet("LOGS"); 
+  if (logSheet.getLastRow() === 0) {
     logSheet.appendRow(["timestamp", "user_id", "username", "action", "details", "status"]);
   }
 
-  // 5. สร้างหัวตาราง PAYROLL
-  if (!ss.getSheetByName("PAYROLL")) {
-    const paySheet = ss.insertSheet("PAYROLL");
+  // 5. ตรวจสอบ/สร้างแผ่นงาน PAYROLL
+  let paySheet = ss.getSheetByName("PAYROLL") || ss.insertSheet("PAYROLL"); 
+  if (paySheet.getLastRow() === 0) {
     paySheet.appendRow(["pay_id", "user_id", "username", "gross_amount", "tax_3", "net_amount", "cycle", "status", "timestamp"]);
   }
 
-  // 6. สร้างหัวตาราง CONFIG และ Token เริ่มต้น
-  if (!ss.getSheetByName("CONFIG")) {
-    const configSheet = ss.insertSheet("CONFIG");
+  // 6. ตรวจสอบ/สร้างแผ่นงาน CONFIG
+  let configSheet = ss.getSheetByName("CONFIG") || ss.insertSheet("CONFIG"); 
+  if (configSheet.getLastRow() === 0) {
     configSheet.appendRow(["key", "value"]);
-    configSheet.appendRow(["line_token", ""]); // ใส่ Token LINE Notify ที่นี่
+    configSheet.appendRow(["line_token", ""]);
   }
 
   const response = {
-    jobs: getSheetData(ss, "JOBS"),
-    stock: getSheetData(ss, "STOCK"),
-    users: getSheetData(ss, "USERS"),
-    payroll: getSheetData(ss, "PAYROLL")
+    jobs: getSheetData(ss, "JOBS"), // ดึงข้อมูลจาก Sheet ที่อาจถูกสร้างขึ้นใหม่
+    stock: getSheetData(ss, "STOCK"), // ดึงข้อมูลจาก Sheet ที่อาจถูกสร้างขึ้นใหม่
+    users: getSheetData(ss, "USERS"), // ดึงข้อมูลจาก Sheet ที่อาจถูกสร้างขึ้นใหม่
+    payroll: getSheetData(ss, "PAYROLL") // ดึงข้อมูลจาก Sheet ที่อาจถูกสร้างขึ้นใหม่
   };
 
   return ContentService.createTextOutput(JSON.stringify(response))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // ป้องกัน Error เมื่อมีการเรียกใช้โดยไม่มีข้อมูลส่งมา (เช่น การกด Run ใน Editor)
+  if (!e || !e.postData) {
+    return createResponse({ status: "error", message: "No data received. Please access via Web App URL." });
+  }
+
+  const content = JSON.parse(e.postData.contents);
+  
+  // 1. สร้างงานใหม่
+  if (content.action === "create") {
+    const sheet = ss.getSheetByName("JOBS"); // ต้องมีอยู่แล้วจาก doGet
+    const id = Utilities.getUuid();
+    const rn = "RN-" + Math.floor(1000 + Math.random() * 9000) + "-" + Date.now().toString().slice(-4);
+    sheet.appendRow([id, rn, content.customer_name, content.customer_phone, content.customer_line, content.job_detail, content.job_category, content.budget, "pending", "", content.user_id || "GUEST", new Date()]);
+    sendNotify(ss, `🆕 มีงานจ้างใหม่!\n📌 เลขที่: ${rn}\n👤 ลูกค้า: ${content.customer_name}\n📞 โทร: ${content.customer_phone}\n📝 รายละเอียด: ${content.job_detail}\n💰 งบประมาณ: ฿${Number(content.budget).toLocaleString()}`);
+    return createResponse({ status: "success", id: id, rn: rn });
+  }
+  
+  // 2. อัปเดตสถานะงาน
+  if (content.action === "update_status") {
+    const sheet = ss.getSheetByName("JOBS"); // ต้องมีอยู่แล้วจาก doGet
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] == content.id) {
+        sheet.getRange(i + 1, 9).setValue(content.status);
+        if (content.tailor_name) sheet.getRange(i + 1, 10).setValue(content.tailor_name);
+        break;
+      }
+    }
+    // หักสต็อก
+    if (content.status === "accepted" && content.stock_id) {
+      const sSheet = ss.getSheetByName("STOCK"); // ต้องมีอยู่แล้วจาก doGet
+      const sData = sSheet.getDataRange().getValues();
+      for (let j = 1; j < sData.length; j++) {
+        if (sData[j][0] == content.stock_id) {
+          const newQty = Number(sData[j][3]) - Number(content.stock_qty);
+          sSheet.getRange(j + 1, 4).setValue(newQty);
+          sSheet.getRange(j + 1, 8).setValue(new Date());
+          if (newQty <= Number(sData[j][6])) {
+            sendNotify(ss, `⚠️ เตือน: วัสดุใกล้หมด!\n📦 วัสดุ: ${sData[j][2]}\n📉 คงเหลือ: ${newQty} ${sData[j][4]}`);
+          }
+          break;
+        }
+      }
+    }
+    return createResponse({ status: "success" });
+  }
+
+  // 3. ลงทะเบียน
+  if (content.action === "register") {
+    const uSheet = ss.getSheetByName("USERS"); // ต้องมีอยู่แล้วจาก doGet
+    const uData = uSheet.getDataRange().getValues();
+    for (let i = 1; i < uData.length; i++) {
+      if (uData[i][1] === content.username) return createResponse({ status: "error", message: "ชื่อผู้ใช้งานนี้ถูกใช้ไปแล้ว" });
+    }
+    const uId = "U-" + Utilities.getUuid().slice(0, 8).toUpperCase();
+    uSheet.appendRow([uId, content.username, content.password, "customer", content.full_name, content.phone]);
+    sendNotify(ss, `👤 มีสมาชิกใหม่ลงทะเบียน!\n🆔 User ID: ${uId}\n📛 ชื่อ: ${content.full_name}`);
+    return createResponse({ status: "success", user: { user_id: uId, username: content.username, role: "customer", full_name: content.full_name } });
+  }
+
+  // 4. ล็อกอิน
+  if (content.action === "login") {
+    const uSheet = ss.getSheetByName("USERS"); // ต้องมีอยู่แล้วจาก doGet
+    const uData = uSheet.getDataRange().getValues();
+    for (let i = 1; i < uData.length; i++) {
+      if (uData[i][1] === content.username && uData[i][2].toString() === content.password.toString()) {
+        if (uData[i][3] === "boss") sendNotify(ss, `🔐 แจ้งเตือน: มีการเข้าสู่ระบบ BOSS\n👤 User: ${content.username}`);
+        return createResponse({ status: "success", user: { user_id: uData[i][0], username: uData[i][1], role: uData[i][3], full_name: uData[i][4] } });
+      }
+    }
+    return createResponse({ status: "error", message: "Username หรือ Password ไม่ถูกต้อง" });
+  }
+
+  // 5. เบิกเงิน (Request Payroll)
+  if (content.action === "request_payment") {
+    const pSheet = ss.getSheetByName("PAYROLL"); // ต้องมีอยู่แล้วจาก doGet
+    const gross = parseFloat(content.amount);
+    const tax = gross * 0.03;
+    pSheet.appendRow(["PAY-" + Utilities.getUuid().slice(0, 8).toUpperCase(), content.user_id, content.username, gross, tax, gross - tax, content.cycle, "pending", new Date()]);
+    return createResponse({ status: "success" });
+  }
+
+  // 6. อนุมัติเบิกเงิน
+  if (content.action === "approve_payment") {
+    const pSheet = ss.getSheetByName("PAYROLL"); // ต้องมีอยู่แล้วจาก doGet
+    const pData = pSheet.getDataRange().getValues();
+    for (let i = 1; i < pData.length; i++) {
+      if (pData[i][0] === content.pay_id) {
+        pSheet.getRange(i + 1, 8).setValue("approved");
+        break;
+      }
+    }
+    return createResponse({ status: "success" });
+  }
+
+  // 7. รีเซ็ตรหัสผ่าน
+  if (content.action === "reset_password") {
+    const uSheet = ss.getSheetByName("USERS"); // ต้องมีอยู่แล้วจาก doGet
+    const uData = uSheet.getDataRange().getValues();
+    for (let i = 1; i < uData.length; i++) {
+      if (uData[i][1] === content.username && uData[i][5].toString() === content.phone.toString()) {
+        uSheet.getRange(i + 1, 3).setValue(content.new_password);
+        logEvent(ss, uData[i][0], content.username, "RESET_PASSWORD", "สำเร็จ", "success");
+        sendNotify(ss, `🔐 แจ้งเตือน: กู้คืนรหัสผ่านสำเร็จ\n👤 ผู้ใช้งาน: ${content.username}`);
+        return createResponse({ status: "success" });
+      }
+    }
+    return createResponse({ status: "error", message: "ข้อมูลไม่ถูกต้อง" });
+  }
+
+  // 8. เปลี่ยนสิทธิ์ (Update Role)
+  if (content.action === "update_role") {
+    const uSheet = ss.getSheetByName("USERS"); // ต้องมีอยู่แล้วจาก doGet
+    const uData = uSheet.getDataRange().getValues();
+    for (let i = 1; i < uData.length; i++) {
+      if (uData[i][0].toString() === content.user_id.toString()) {
+        uSheet.getRange(i + 1, 4).setValue(content.role);
+        logEvent(ss, content.admin_id, content.admin_name, "UPDATE_ROLE", `เปลี่ยนสิทธิ์ ${uData[i][1]} เป็น ${content.role}`, "success");
+        break;
+      }
+    }
+    return createResponse({ status: "success" });
+  }
+
+  // 9. เปลี่ยนรหัสผ่าน (Change Password)
+  if (content.action === "change_password") {
+    const uSheet = ss.getSheetByName("USERS"); // ต้องมีอยู่แล้วจาก doGet
+    const uData = uSheet.getDataRange().getValues();
+    for (let i = 1; i < uData.length; i++) {
+      if (uData[i][0].toString() === content.user_id.toString()) {
+        if (uData[i][2].toString() === content.old_password.toString()) {
+          uSheet.getRange(i + 1, 3).setValue(content.new_password);
+          logEvent(ss, content.user_id, uData[i][1], "CHANGE_PASSWORD", "สำเร็จ", "success");
+          sendNotify(ss, `🔐 แจ้งเตือน: เปลี่ยนรหัสผ่านสำเร็จ\n👤 ผู้ใช้งาน: ${uData[i][1]}`);
+          return createResponse({ status: "success" });
+        }
+        return createResponse({ status: "error", message: "รหัสผ่านเดิมไม่ถูกต้อง" });
+      }
+    }
+    return createResponse({ status: "error", message: "ไม่พบผู้ใช้" });
+  }
+
+  // 10. อัปเดตสต็อก (BOSS เท่านั้น)
+  if (content.action === "update_stock") {
+    const sSheet = ss.getSheetByName("STOCK"); // ต้องมีอยู่แล้วจาก doGet
+    const sData = sSheet.getDataRange().getValues();
+    for (let i = 1; i < sData.length; i++) {
+      if (sData[i][0] == content.id) {
+        sSheet.getRange(i + 1, 4).setValue(content.quantity);
+        sSheet.getRange(i + 1, 8).setValue(new Date());
+        break;
+      }
+    }
+    return createResponse({ status: "success" });
+  }
 }
 
 function getSheetData(ss, sheetName) {
@@ -58,377 +218,34 @@ function getSheetData(ss, sheetName) {
   const headers = values[0];
   return values.slice(1).map(row => {
     let obj = {};
-    headers.forEach((header, index) => {
-      // Security: ป้องกันการส่งรหัสผ่านไปยัง Client-side
-      if (header.toLowerCase() === 'password') return;
-      let value = row[index];
-      // จัดการรูปแบบวันที่ให้เป็น ISO String เพื่อให้ Frontend ใช้งานง่าย
-      if (value instanceof Date) value = value.toISOString();
-      obj[header] = value;
+    headers.forEach((h, i) => {
+      if (h.toLowerCase() === 'password') return;
+      let v = row[i];
+      if (v instanceof Date) v = v.toISOString();
+      obj[h] = v;
     });
     return obj;
   });
 }
 
-function doPost(e) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("JOBS");
-  const content = JSON.parse(e.postData.contents);
-  
-  // 1. สร้างงานใหม่ (Create Job)
-  if (content.action === "create") {
-    const id = Utilities.getUuid();
-    const rn = "RN-" + Math.floor(1000 + Math.random() * 9000) + "-" + Date.now().toString().slice(-4);
-    sheet.appendRow([
-      id,
-      rn,
-      content.customer_name,
-      content.customer_phone,
-      content.customer_line,
-      content.job_detail,
-      content.job_category,
-      content.budget,
-      "pending",
-      "", // tailor_name
-      content.user_id || "GUEST",
-      new Date()
-    ]);
-
-    // แจ้งเตือน LINE Notify เมื่อมีงานใหม่
-    const configSheet = ss.getSheetByName("CONFIG");
-    if (configSheet) {
-      const configData = configSheet.getDataRange().getValues();
-      let lineToken = "";
-      for (let i = 1; i < configData.length; i++) {
-        if (configData[i][0] === "line_token") {
-          lineToken = configData[i][1].toString();
-          break;
-        }
-      }
-      if (lineToken && lineToken.trim() !== "") {
-        const msg = `\n🆕 มีงานจ้างใหม่!\n📌 เลขที่: ${rn}\n👤 ลูกค้า: ${content.customer_name}\n📞 โทร: ${content.customer_phone}\n📝 รายละเอียด: ${content.job_detail}\n💰 งบประมาณ: ฿${Number(content.budget).toLocaleString()}\n📅 วันที่: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`;
-        sendLineNotify(msg, lineToken);
-      }
-    }
-
-    return createResponse({ status: "success", id: id, rn: rn });
+function sendNotify(ss, msg) {
+  const cSheet = ss.getSheetByName("CONFIG");
+  if (!cSheet) return;
+  const data = cSheet.getDataRange().getValues();
+  let token = "";
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === "line_token") { token = data[i][1]; break; }
   }
-  
-  // 2. อัปเดตสถานะงาน (Update Status)
-  if (content.action === "update_status") {
-    const data = sheet.getDataRange().getValues();
-    const jobId = content.id;
-    const newStatus = content.status;
-    const tailorName = content.tailor_name || "";
-    
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] == jobId) {
-        // คอลัมน์ Status (I=9), Tailor Name (J=10)
-        sheet.getRange(i + 1, 9).setValue(newStatus);
-        if (tailorName) sheet.getRange(i + 1, 10).setValue(tailorName);
-        break;
-      }
-    }
-
-    // หักสต๊อกอัตโนมัติ (ถ้ามีการส่งข้อมูลสต๊อกมา)
-    if (newStatus === "accepted" && content.stock_id && content.stock_qty) {
-      const stockSheet = ss.getSheetByName("STOCK");
-      const stockData = stockSheet.getDataRange().getValues();
-      for (let j = 1; j < stockData.length; j++) {
-        if (stockData[j][0] == content.stock_id) {
-          const currentQty = Number(stockData[j][3]);
-          const usedQty = Number(content.stock_qty);
-          const newQty = currentQty - usedQty;
-          const minThreshold = Number(stockData[j][6]);
-          const itemName = stockData[j][2];
-          const unit = stockData[j][4];
-
-          stockSheet.getRange(j + 1, 4).setValue(newQty);
-          stockSheet.getRange(j + 1, 8).setValue(new Date());
-
-          // ตรวจสอบเกณฑ์ขั้นต่ำและแจ้งเตือนผ่าน LINE Notify
-          if (newQty <= minThreshold) {
-            const configSheet = ss.getSheetByName("CONFIG");
-            if (configSheet) {
-              const configValues = configSheet.getDataRange().getValues();
-              let lineToken = "";
-              for (let k = 1; k < configValues.length; k++) {
-                if (configValues[k][0] === "line_token") {
-                  lineToken = configValues[k][1].toString();
-                  break;
-                }
-              }
-              if (lineToken) {
-                const alertMsg = `\n⚠️ เตือน: วัสดุใกล้หมด!\n📦 วัสดุ: ${itemName}\n📉 คงเหลือปัจจุบัน: ${newQty} ${unit}\n🚩 เกณฑ์ขั้นต่ำ: ${minThreshold} ${unit}`;
-                sendLineNotify(alertMsg, lineToken);
-              }
-            }
-          }
-          break;
-        }
-      }
-    }
-    return createResponse({ status: "success" });
-  }
-
-  // 5. ยื่นคำขอเบิกเงิน (Request Payment)
-  if (content.action === "request_payment") {
-    const paySheet = ss.getSheetByName("PAYROLL");
-    const gross = Number(content.amount);
-    const tax = gross * 0.03; // ภาษีหัก ณ ที่จ่าย 3%
-    const net = gross - tax;
-    
-    paySheet.appendRow([
-      "PAY-" + Utilities.getUuid().slice(0, 8).toUpperCase(),
-      content.user_id,
-      content.username,
-      gross,
-      tax,
-      net,
-      content.cycle,
-      "pending",
-      new Date()
-    ]);
-    return createResponse({ status: "success" });
-  }
-
-  // 6. อนุมัติการเบิกเงิน (Approve Payment)
-  if (content.action === "approve_payment") {
-    const paySheet = ss.getSheetByName("PAYROLL");
-    const data = paySheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === content.pay_id) {
-        paySheet.getRange(i + 1, 8).setValue("approved");
-        break;
-      }
-    }
-    return createResponse({ status: "success" });
-  }
-
-  // 3. ลงทะเบียนสมาชิกใหม่
-  if (content.action === "register") {
-    const userSheet = ss.getSheetByName("USERS");
-    const userData = userSheet.getDataRange().getValues();
-    const username = content.username;
-
-    // ตรวจสอบว่ามีชื่อผู้ใช้นี้หรือยัง
-    for (let i = 1; i < userData.length; i++) {
-      if (userData[i][1] === username) {
-        return createResponse({ status: "error", message: "ชื่อผู้ใช้งานนี้ถูกใช้ไปแล้ว" });
-      }
-    }
-
-    const userId = "U-" + Utilities.getUuid().slice(0, 8).toUpperCase();
-    userSheet.appendRow([
-      userId,
-      username,
-      content.password,
-      "customer",
-      content.full_name,
-      content.phone
-    ]);
-
-    // แจ้งเตือน LINE Notify เมื่อมีสมาชิกใหม่
-    const configSheet = ss.getSheetByName("CONFIG");
-    if (configSheet) {
-      const configData = configSheet.getDataRange().getValues();
-      let lineToken = "";
-      for (let i = 1; i < configData.length; i++) {
-        if (configData[i][0] === "line_token") {
-          lineToken = configData[i][1].toString();
-          break;
-        }
-      }
-      if (lineToken && lineToken.trim() !== "") {
-        const msg = `\n👤 มีสมาชิกใหม่ลงทะเบียน!\n🆔 User ID: ${userId}\n📛 ชื่อ: ${content.full_name}\n📧 Username: ${username}\n📞 โทร: ${content.phone}\n📅 วันที่: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`;
-        sendLineNotify(msg, lineToken);
-      }
-    }
-
-    return createResponse({ 
-      status: "success", 
-      user: { user_id: userId, username: username, role: "customer", full_name: content.full_name } 
-    });
-  }
-
-  // 3. ระบบ Login รวม (Boss, Tailor, Customer)
-  if (content.action === "login") {
-    const userSheet = ss.getSheetByName("USERS");
-    const userData = userSheet.getDataRange().getValues();
-    const username = content.username;
-    const password = content.password;
-    
-    for (let i = 1; i < userData.length; i++) {
-      if (userData[i][1] === username && userData[i][2].toString() === password.toString()) {
-        const userProfile = {
-          user_id: userData[i][0],
-          username: userData[i][1],
-          role: userData[i][3],
-          full_name: userData[i][4]
-        };
-
-        // แจ้งเตือน LINE เฉพาะ Boss
-        if (userProfile.role === "boss") {
-          notifyLogin(ss, userProfile.username);
-        }
-
-        return createResponse({ status: "success", user: userProfile });
-      }
-    }
-    return createResponse({ status: "error", message: "Username หรือ Password ไม่ถูกต้อง" });
-  }
-
-  function notifyLogin(ss, username) {
-    const configSheet = ss.getSheetByName("CONFIG");
-    if (configSheet) {
-      const configData = configSheet.getDataRange().getValues();
-      let lineToken = "";
-      for (let i = 1; i < configData.length; i++) {
-        if (configData[i][0] === "line_token") {
-          lineToken = configData[i][1].toString();
-          break;
-        }
-      }
-      if (lineToken && lineToken.trim() !== "") {
-        sendLineNotify("\n🔐 แจ้งเตือน: มีการเข้าสู่ระบบ BOSS\n👤 User: " + username + "\n📅 วันที่: " + new Date().toLocaleString('th-TH'), lineToken);
-      }
-    }
-  }
-
-  // 4. อัปเดตสต๊อกสินค้า
-  if (content.action === "update_stock") {
-    const stockSheet = ss.getSheetByName("STOCK");
-    const data = stockSheet.getDataRange().getValues();
-    const itemId = content.id;
-    const newQty = content.quantity;
-    
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] == itemId) {
-        stockSheet.getRange(i + 1, 4).setValue(newQty);
-        stockSheet.getRange(i + 1, 8).setValue(new Date());
-        break;
-      }
-    }
-    return createResponse({ status: "success" });
-  }
-
-  // 5. ระบบกู้คืนรหัสผ่าน (Reset Password)
-  if (content.action === "reset_password") {
-    const userSheet = ss.getSheetByName("USERS");
-    const userData = userSheet.getDataRange().getValues();
-    const username = content.username;
-    const phone = content.phone;
-    const newPassword = content.new_password;
-
-    for (let i = 1; i < userData.length; i++) {
-      if (userData[i][1] === username && userData[i][5].toString() === phone.toString()) {
-        userSheet.getRange(i + 1, 3).setValue(newPassword);
-        logEvent(ss, userData[i][0], username, "RESET_PASSWORD", "เปลี่ยนรหัสผ่านสำเร็จ", "success");
-
-        // แจ้งเตือน LINE Notify เมื่อกู้คืนรหัสผ่านสำเร็จ
-        const configSheet = ss.getSheetByName("CONFIG");
-        if (configSheet) {
-          const configData = configSheet.getDataRange().getValues();
-          let lineToken = "";
-          for (let k = 1; k < configData.length; k++) {
-            if (configData[k][0] === "line_token") {
-              lineToken = configData[k][1].toString();
-              break;
-            }
-          }
-          if (lineToken && lineToken.trim() !== "") {
-            const msg = `\n🔐 แจ้งเตือน: มีการกู้คืนรหัสผ่านสำเร็จ\n👤 ผู้ใช้งาน: ${username}\n📛 ชื่อ: ${userData[i][4]}\n📅 วันที่: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`;
-            sendLineNotify(msg, lineToken);
-          }
-        }
-
-        return createResponse({ status: "success" });
-      }
-    }
-    logEvent(ss, "N/A", username, "RESET_PASSWORD", "พยายามเปลี่ยนรหัสผ่านแต่เบอร์โทรไม่ถูกต้อง", "failure");
-    return createResponse({ status: "error", message: "ข้อมูลไม่ถูกต้อง (ชื่อผู้ใช้หรือเบอร์โทรศัพท์ไม่ตรงกัน)" });
-  }
-
-  // 6. อัปเดตสิทธิ์ผู้ใช้งาน (Update User Role)
-  if (content.action === "update_role") {
-    const userSheet = ss.getSheetByName("USERS");
-    const userData = userSheet.getDataRange().getValues();
-    const userId = content.user_id;
-    const newRole = content.role;
-    
-    for (let i = 1; i < userData.length; i++) {
-      if (userData[i][0].toString() === userId.toString()) {
-        userSheet.getRange(i + 1, 4).setValue(newRole); // Column 4 คือ role
-        logEvent(ss, content.admin_id, content.admin_name, "UPDATE_ROLE", "เปลี่ยนสิทธิ์ผู้ใช้ " + userData[i][1] + " เป็น " + newRole, "success");
-        break;
-      }
-    }
-    return createResponse({ status: "success" });
-  }
-
-  // 7. เปลี่ยนรหัสผ่าน (Change Password) สำหรับผู้ที่ Login อยู่แล้ว
-  if (content.action === "change_password") {
-    const userSheet = ss.getSheetByName("USERS");
-    const userData = userSheet.getDataRange().getValues();
-    const userId = content.user_id;
-    const oldPassword = content.old_password;
-    const newPassword = content.new_password;
-
-    for (let i = 1; i < userData.length; i++) {
-      if (userData[i][0].toString() === userId.toString()) {
-        if (userData[i][2].toString() === oldPassword.toString()) {
-          userSheet.getRange(i + 1, 3).setValue(newPassword);
-          logEvent(ss, userId, userData[i][1], "CHANGE_PASSWORD", "เปลี่ยนรหัสผ่านสำเร็จ", "success");
-
-          // แจ้งเตือน LINE Notify เมื่อเปลี่ยนรหัสผ่านสำเร็จ
-          const configSheet = ss.getSheetByName("CONFIG");
-          if (configSheet) {
-            const configData = configSheet.getDataRange().getValues();
-            let lineToken = "";
-            for (let k = 1; k < configData.length; k++) {
-              if (configData[k][0] === "line_token") {
-                lineToken = configData[k][1].toString();
-                break;
-              }
-            }
-            if (lineToken && lineToken.trim() !== "") {
-              const msg = `\n🔐 แจ้งเตือน: มีการเปลี่ยนรหัสผ่านสำเร็จ\n👤 ผู้ใช้งาน: ${userData[i][1]}\n📛 ชื่อ: ${userData[i][4]}\n📅 วันที่: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`;
-              sendLineNotify(msg, lineToken);
-            }
-          }
-
-          return createResponse({ status: "success" });
-        } else {
-          return createResponse({ status: "error", message: "รหัสผ่านเดิมไม่ถูกต้อง" });
-        }
-      }
-    }
-    return createResponse({ status: "error", message: "ไม่พบผู้ใช้งานในระบบ" });
-  }
+  if (!token) return;
+  const options = { "method": "post", "headers": { "Authorization": "Bearer " + token }, "payload": { "message": "\n" + msg } };
+  UrlFetchApp.fetch("https://notify-api.line.me/api/notify", options);
 }
 
-function logEvent(ss, userId, username, action, details, status) {
-  const logSheet = ss.getSheetByName("LOGS");
-  if (logSheet) {
-    logSheet.appendRow([new Date(), userId, username, action, details, status]);
-  }
+function logEvent(ss, uId, uName, action, details, status) {
+  const lSheet = ss.getSheetByName("LOGS");
+  if (lSheet) lSheet.appendRow([new Date(), uId, uName, action, details, status]);
 }
 
 function createResponse(payload) {
-  return ContentService.createTextOutput(JSON.stringify(payload))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function sendLineNotify(message, token) {
-  const url = "https://notify-api.line.me/api/notify";
-  const options = {
-    "method": "post",
-    "headers": {
-      "Authorization": "Bearer " + token
-    },
-    "payload": {
-      "message": message
-    }
-  };
-  UrlFetchApp.fetch(url, options);
+  return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
 }

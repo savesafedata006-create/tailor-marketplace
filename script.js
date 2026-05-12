@@ -853,5 +853,36 @@ async function handleChangePassword() {
   } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
 }
 
+// ระบบกดค้าง 3 วินาทีสำหรับปุ่มลับ
+let portalTimer;
+function initPortalLongPress() {
+    const btn = document.querySelector('.portal-access-btn');
+    if (!btn) return;
+
+    const startPress = (e) => {
+        if (e.type === 'touchstart') e.preventDefault();
+        portalTimer = setTimeout(() => {
+            togglePortalDropdown();
+        }, 3000); // 3 วินาที
+    };
+
+    const cancelPress = () => {
+        clearTimeout(portalTimer);
+    };
+
+    btn.addEventListener('mousedown', startPress);
+    btn.addEventListener('touchstart', startPress);
+    btn.addEventListener('mouseup', cancelPress);
+    btn.addEventListener('mouseleave', cancelPress);
+    btn.addEventListener('touchend', cancelPress);
+}
+
+function togglePortalDropdown() {
+  const dropdown = document.getElementById("portal-dropdown");
+  if (dropdown) {
+    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+  }
+}
+
 // เรียกใช้งานระบบกดค้างเมื่อโหลดหน้าเว็บ
 document.addEventListener('DOMContentLoaded', initPortalLongPress);
