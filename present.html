@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>วิธีใช้งาน - Tailor Marketplace</title>
+  <title>คู่มือระบบ - Tailor Marketplace</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="style.css">
@@ -16,18 +16,26 @@
     .wi-step { background: var(--bg); padding: 18px; border-radius: 15px; margin-bottom: 12px; border-left: 4px solid var(--primary); }
     .wi-step h4 { margin: 0 0 8px 0; color: var(--primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 15px; }
     .wi-step h4 span { font-size: 11px; background: var(--primary); color: white; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+    .wi-step p { margin: 6px 0 0; font-size: 13px; color: var(--text-sub); }
     .wi-details { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; margin-top: 10px; }
+    .wi-details-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 13px; margin-top: 10px; }
     .wi-box { background: rgba(255,255,255,0.6); padding: 10px; border-radius: 10px; }
     .wi-box strong { display: block; color: var(--text-main); margin-bottom: 5px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .wi-box ul { margin: 0; padding-left: 16px; line-height: 1.9; }
+    .wi-box code { background: rgba(0,0,0,0.08); padding: 1px 5px; border-radius: 4px; font-size: 11px; font-family: monospace; }
 
     .system-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 4px 10px; background: #e0e7ff; color: #4338ca; border-radius: 20px; margin-top: 10px; }
+    .system-badge.warn { background: #fef9c3; color: #854d0e; }
+    .system-badge.success { background: #dcfce7; color: #166534; }
+    .system-badge.danger { background: #fee2e2; color: #991b1b; }
+
     .role-tag { font-size: 12px; padding: 3px 10px; border-radius: 5px; font-weight: 600; }
     .role-customer { background: #dcfce7; color: #166534; }
     .role-tailor { background: #dbeafe; color: #1e40af; }
     .role-boss { background: #fef9c3; color: #854d0e; }
-    .flow-connector { text-align: center; margin: -8px 0 8px; color: var(--text-sub); font-size: 18px; }
+    .role-system { background: #f3e8ff; color: #6b21a8; }
 
-    /* === Page Flow Diagram === */
+    .flow-connector { text-align: center; margin: -8px 0 8px; color: var(--text-sub); font-size: 18px; }
     .flow-map { display: flex; flex-direction: column; gap: 8px; }
     .flow-row { display: flex; gap: 12px; }
     .flow-col { flex: 1; }
@@ -48,11 +56,40 @@
     .flow-pages-row .flow-node { text-align: center; border-left: none; border-top: 3px solid var(--secondary); }
     .flow-pages-row a { color: var(--primary); text-decoration: none; font-size: 13px; font-weight: 500; }
 
-    @media (max-width: 480px) {
-      .wi-details { grid-template-columns: 1fr; }
+    /* API Table */
+    .api-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+    .api-table th { background: var(--primary); color: white; padding: 8px 10px; text-align: left; font-weight: 500; }
+    .api-table td { padding: 8px 10px; border-bottom: 1px solid var(--bg); vertical-align: top; }
+    .api-table tr:hover td { background: var(--bg); }
+    .api-table code { background: rgba(99,102,241,0.1); color: #4338ca; padding: 1px 5px; border-radius: 4px; font-size: 11px; font-family: monospace; }
+    .api-table .method-post { background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+    .api-table .method-get  { background: #dbeafe; color: #1e40af; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+
+    /* Sheet Table */
+    .sheet-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .sheet-table th { background: #334155; color: white; padding: 7px 10px; text-align: left; }
+    .sheet-table td { padding: 7px 10px; border-bottom: 1px solid var(--bg); font-size: 11px; }
+    .sheet-table tr:nth-child(even) td { background: rgba(0,0,0,0.02); }
+
+    /* Status Flow */
+    .status-flow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12px; padding: 10px; background: var(--bg); border-radius: 10px; }
+
+    /* Quick ref */
+    .quick-ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .quick-ref-card { background: var(--bg); border-radius: 12px; padding: 14px; }
+    .quick-ref-card h5 { margin: 0 0 8px; font-size: 13px; color: var(--text-main); }
+    .quick-ref-card ul { margin: 0; padding-left: 16px; font-size: 12px; color: var(--text-sub); line-height: 2; }
+
+    .warn-box { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 10px; padding: 12px 16px; font-size: 12px; color: #92400e; margin-top: 10px; }
+    .info-box  { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 16px; font-size: 12px; color: #1e40af; margin-top: 10px; }
+    .success-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px 16px; font-size: 12px; color: #166534; margin-top: 10px; }
+
+    @media (max-width: 600px) {
+      .wi-details, .wi-details-3, .quick-ref-grid { grid-template-columns: 1fr; }
       .flow-split-row { flex-direction: column; }
       .flow-split-sep { transform: rotate(90deg); }
       .flow-pages-row { grid-template-columns: 1fr; }
+      .api-table { font-size: 11px; }
     }
   </style>
 </head>
@@ -76,258 +113,1084 @@
 
     <section class="view">
       <div class="section-header">
-        <h2><i class="fas fa-sitemap"></i> คู่มือและผังระบบ</h2>
-        <p>ผังการเชื่อมโยงหน้าต่างๆ และขั้นตอนการทำงานมาตรฐาน</p>
+        <h2><i class="fas fa-sitemap"></i> คู่มือ SOP/WI และผังระบบ</h2>
+        <p>ขั้นตอนการทำงานมาตรฐาน (Standard Operating Procedure) ครอบคลุมทุก Role และระบบหลังบ้าน</p>
       </div>
 
-      <!-- ===== PAGE FLOW DIAGRAM ===== -->
+      <!-- ========== PAGE FLOW DIAGRAM ========== -->
       <div class="sop-section">
         <div class="sop-header">
           <i class="fas fa-project-diagram"></i>
           <h3>ผังการเชื่อมโยงระบบ (Page Flow)</h3>
         </div>
-
         <div class="flow-map">
-
-          <!-- Entry -->
           <div class="flow-node entry">
             <i class="fas fa-globe" style="color:var(--text-sub); margin-bottom:5px; display:block;"></i>
             <strong style="color:var(--text-sub);">ผู้เยี่ยมชมทั่วไป</strong>
             <small>เข้าสู่ <b>index.html</b> เป็นหน้าแรก</small>
           </div>
           <div class="flow-down"><i class="fas fa-arrow-down"></i> สมัครสมาชิก / เข้าสู่ระบบ</div>
-
-          <!-- Split: Customer vs Admin -->
           <div class="flow-split-row">
             <div class="flow-node customer-node">
               <strong><i class="fas fa-user" style="margin-right:5px;"></i>ลูกค้า (Customer)</strong>
               <ul>
-                <li>ส่งงานจ้าง + สัดส่วน</li>
+                <li>สมัครสมาชิก / Login</li>
+                <li>ส่งงานจ้าง + สัดส่วนร่างกาย</li>
                 <li>รับใบเสร็จดิจิทัล (RN)</li>
                 <li>ติดตามสถานะ Real-time</li>
-                <li>ยืนยันรับงาน + ให้คะแนน</li>
-                <li>ขอแก้ไข / เคลมงาน</li>
+                <li>ดูรูปความคืบหน้า</li>
+                <li>ยืนยันรับงาน + ให้คะแนน 1-5 ดาว</li>
+                <li>ยกเลิกงาน / ส่งเคลมแก้ไข</li>
               </ul>
             </div>
-            <div class="flow-split-sep">
-              <i class="fas fa-exchange-alt"></i>
-            </div>
+            <div class="flow-split-sep"><i class="fas fa-exchange-alt"></i></div>
             <div class="flow-node admin-node">
               <strong><i class="fas fa-user-shield" style="margin-right:5px;"></i>Boss / ช่าง</strong>
               <small style="margin-bottom:6px; display:block;"><i class="fas fa-lock"></i> <a href="tailor.html" style="color:var(--warning);">tailor.html</a></small>
               <ul>
-                <li>รับงาน / ปฏิเสธ + บันทึกเหตุผล</li>
-                <li>เลือกหักสต๊อกวัสดุ</li>
+                <li>รับงาน / ปฏิเสธ + เหตุผล</li>
+                <li>เลือกหักสต๊อกวัสดุอัตโนมัติ</li>
                 <li>อัปโหลดรูปความคืบหน้า</li>
-                <li>แจ้งงานเสร็จสมบูรณ์</li>
-                <li>📊 <b>Boss only:</b> ภาพรวม / สต๊อก / ผลงานช่าง / การเงิน / P&L / วิเคราะห์</li>
+                <li>แจ้งงานเสร็จ → Email notify</li>
+                <li>เบิกเงินรอบ 15/30</li>
+                <li><b>Boss only:</b> ภาพรวม / สต๊อก / ผลงานช่าง / การเงิน / P&L / วิเคราะห์</li>
               </ul>
               <div style="margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:5px; font-size:11px;">
-                <a href="tailor.html" onclick="sessionStorage.setItem('autoTab','dashboard'); return true;" style="background:#fef9c3; color:#854d0e; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-tachometer-alt"></i> ภาพรวม</a>
-                <a href="tailor.html" onclick="sessionStorage.setItem('autoTab','pending'); return true;" style="background:#dcfce7; color:#166534; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-inbox"></i> งาน</a>
-                <a href="tailor.html" onclick="sessionStorage.setItem('autoTab','stock'); return true;" style="background:#dbeafe; color:#1e40af; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-warehouse"></i> สต๊อก</a>
-                <a href="tailor.html" onclick="sessionStorage.setItem('autoTab','payroll'); return true;" style="background:#fce7f3; color:#9d174d; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-money-check-alt"></i> การเงิน</a>
+                <a href="tailor.html" style="background:#fef9c3; color:#854d0e; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-tachometer-alt"></i> ภาพรวม</a>
+                <a href="tailor.html" style="background:#dcfce7; color:#166534; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-inbox"></i> งาน</a>
+                <a href="tailor.html" style="background:#dbeafe; color:#1e40af; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-warehouse"></i> สต๊อก</a>
+                <a href="tailor.html" style="background:#fce7f3; color:#9d174d; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-money-check-alt"></i> การเงิน</a>
               </div>
             </div>
           </div>
-
-          <!-- Secret Access Note -->
           <div class="flow-secret">
             <i class="fas fa-fingerprint"></i>
             <b>ทางเข้าแอดมินลับ:</b> กดค้างปุ่ม <i class="fas fa-fingerprint"></i> ที่หน้าลูกค้า <b>3 วินาที</b> → เมนู Admin Login จะปรากฏ
           </div>
-          <div class="flow-down" style="font-size:11px; color:var(--text-sub);">หน้าข้อมูลเพิ่มเติม</div>
-
-          <!-- Info pages -->
-          <div class="flow-pages-row">
-            <div class="flow-node">
-              <i class="fas fa-book" style="color:var(--secondary); display:block; margin-bottom:5px;"></i>
-              <a href="present.html">วิธีใช้งาน</a>
-              <small style="display:block;">SOP / ผังระบบ</small>
-            </div>
-            <div class="flow-node">
-              <i class="fas fa-images" style="color:var(--secondary); display:block; margin-bottom:5px;"></i>
-              <a href="portfolio.html">ผลงาน</a>
-              <small style="display:block;">ตัวอย่างงาน</small>
-            </div>
-            <div class="flow-node">
-              <i class="fas fa-phone" style="color:var(--secondary); display:block; margin-bottom:5px;"></i>
-              <a href="contact.html">ติดต่อ</a>
-              <small style="display:block;">โทร / Line</small>
-            </div>
+          <div class="flow-down" style="font-size:11px;">สถานะงานในระบบ</div>
+          <div class="status-flow">
+            <span class="status-badge pending">รอรับงาน</span>
+            <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+            <span class="status-badge accepted">รับงานแล้ว</span>
+            <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+            <span class="status-badge sewing">กำลังเย็บ</span>
+            <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+            <span class="status-badge finished">เสร็จสมบูรณ์</span>
+            <span style="color:var(--text-sub); margin:0 6px;">|</span>
+            <span style="color:var(--text-sub); font-size:11px;">หรือ:</span>
+            <span class="status-badge pending">รอรับงาน</span>
+            <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+            <span class="status-badge low-stock">ยกเลิก / ปฏิเสธ</span>
           </div>
-
-          <!-- Status flow -->
-          <div class="sop-section" style="margin:10px 0 0; padding:15px;">
-            <p style="font-size:13px; font-weight:600; margin:0 0 10px; color:var(--text-main);"><i class="fas fa-route"></i> สถานะงานในระบบ</p>
-            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:12px;">
-              <span class="status-badge pending">รอรับงาน</span>
-              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
-              <span class="status-badge accepted">รับงานแล้ว</span>
-              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
-              <span class="status-badge sewing">กำลังเย็บ</span>
-              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
-              <span class="status-badge finished">เสร็จสมบูรณ์</span>
-            </div>
-            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:12px; margin-top:8px;">
-              <span style="color:var(--text-sub);">หรือ:</span>
-              <span class="status-badge pending">รอรับงาน</span>
-              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
-              <span class="status-badge low-stock">ถูกยกเลิก / ปฏิเสธ</span>
-            </div>
+          <div class="flow-down" style="font-size:11px; margin-top:8px;">หน้าข้อมูลเพิ่มเติม</div>
+          <div class="flow-pages-row">
+            <div class="flow-node"><i class="fas fa-book" style="color:var(--secondary); display:block; margin-bottom:5px;"></i><a href="present.html">วิธีใช้งาน</a><small style="display:block;">SOP / ผังระบบ</small></div>
+            <div class="flow-node"><i class="fas fa-images" style="color:var(--secondary); display:block; margin-bottom:5px;"></i><a href="portfolio.html">ผลงาน</a><small style="display:block;">ตัวอย่างงาน</small></div>
+            <div class="flow-node"><i class="fas fa-phone" style="color:var(--secondary); display:block; margin-bottom:5px;"></i><a href="contact.html">ติดต่อ</a><small style="display:block;">โทร / Line</small></div>
           </div>
         </div>
       </div>
 
-      <!-- ===== 5 Admin Modules ===== -->
+      <!-- ========== 5 ADMIN MODULES ========== -->
       <div class="sop-section">
         <div class="sop-header">
           <i class="fas fa-th-large"></i>
-          <h3>5 โมดูลหลักระบบจัดการร้าน (Boss)</h3>
-          <a href="tailor.html" class="role-tag role-boss" style="text-decoration:none; padding: 5px 12px;">เข้าระบบ <i class="fas fa-arrow-right"></i></a>
+          <h3>โมดูลหลักระบบจัดการร้าน (Boss Overview)</h3>
+          <a href="tailor.html" class="role-tag role-boss" style="text-decoration:none; padding:5px 12px;">เข้าระบบ <i class="fas fa-arrow-right"></i></a>
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div class="wi-step" style="border-left-color:#6366f1;">
             <h4 style="color:#6366f1;"><i class="fas fa-tachometer-alt"></i> ภาพรวม (Dashboard) <span style="background:#6366f1;">Tab 1</span></h4>
-            <p style="font-size:13px; color:var(--text-sub);">สรุปงานวันนี้ · รายได้รวม · สถิติ · กราฟรายได้รายเดือน · สัดส่วนประเภทชุด · มูลค่าสต๊อก · ค่าแรงช่าง 40/60</p>
+            <p>งานวันนี้ · รายได้วันนี้ · งานเสร็จวันนี้ · สถิติสะสม · กราฟรายได้รายเดือน · สัดส่วนประเภทชุด · มูลค่าสต๊อก · ผลงาน+ค่าแรงช่าง 40/60</p>
           </div>
           <div class="wi-step" style="border-left-color:#10b981;">
             <h4 style="color:#10b981;"><i class="fas fa-inbox"></i> งาน (Jobs) <span style="background:#10b981;">Tab 2-3</span></h4>
-            <p style="font-size:13px; color:var(--text-sub);">งานใหม่รอรับ · งานกำลังเย็บ · ค้นหา/กรอง · Pagination · รับ/ปฏิเสธ · อัปเดตสถานะ · รูปความคืบหน้า</p>
+            <p>งานใหม่รอรับ · งานกำลังเย็บ · ค้นหา/กรอง · Pagination · รับ/ปฏิเสธ · อัปเดตสถานะ · รูปความคืบหน้า · เพิ่มค่าใช้จ่าย</p>
           </div>
           <div class="wi-step" style="border-left-color:#3b82f6;">
-            <h4 style="color:#3b82f6;"><i class="fas fa-warehouse"></i> สต๊อกสินค้า (Inventory) <span style="background:#3b82f6;">Tab 4</span></h4>
-            <p style="font-size:13px; color:var(--text-sub);">รายการวัสดุ · จำนวน/ราคาต่อหน่วย · แจ้งเตือนของใกล้หมด · หักสต๊อกเมื่อรับงาน · มูลค่าคลังรวม</p>
+            <h4 style="color:#3b82f6;"><i class="fas fa-warehouse"></i> สต๊อก (Inventory) <span style="background:#3b82f6;">Tab 4</span></h4>
+            <p>รายการวัสดุ · จำนวน/ราคาต่อหน่วย · กรองของใกล้หมด · เพิ่มรายการ · แก้ไข inline · หักสต๊อกเมื่อรับงาน · มูลค่าคลังรวม</p>
           </div>
           <div class="wi-step" style="border-left-color:#f59e0b;">
             <h4 style="color:#f59e0b;"><i class="fas fa-users"></i> ผลงานช่าง (Performance) <span style="background:#f59e0b;">Tab 5</span></h4>
-            <p style="font-size:13px; color:var(--text-sub);">งานเสร็จแต่ละคน · ยอดรวม · ค่าแรง 40% · ต้นทุนวัสดุ · กำไรสุทธิต่อช่าง</p>
+            <p>งานเสร็จแต่ละคน · ยอดรวม · ค่าแรง 40% · ต้นทุนวัสดุ · กำไรสุทธิต่อช่าง · Rating เฉลี่ย</p>
           </div>
           <div class="wi-step" style="border-left-color:#ec4899;">
             <h4 style="color:#ec4899;"><i class="fas fa-money-check-alt"></i> การเงิน (Finance) <span style="background:#ec4899;">Tab 6-7</span></h4>
-            <p style="font-size:13px; color:var(--text-sub);">คำขอเบิกเงินพนักงาน · อนุมัติ/ปฏิเสธ · หักภาษี ณ ที่จ่าย 3% · รายงาน P&L รายเดือน · กำไร-ขาดทุนจริง</p>
+            <p>คำขอเบิกเงินพนักงาน · อนุมัติ/ปฏิเสธ · หักภาษี ณ ที่จ่าย 3% · รายงาน P&L รายเดือน · กำไร-ขาดทุนจริง</p>
           </div>
           <div class="wi-step" style="border-left-color:#64748b;">
             <h4 style="color:#64748b;"><i class="fas fa-search-minus"></i> วิเคราะห์ระบบ (Analysis) <span style="background:#64748b;">Tab 8-9</span></h4>
-            <p style="font-size:13px; color:var(--text-sub);">จัดการสิทธิ์ผู้ใช้ · เพิ่ม/แก้ไขบทบาท · วิเคราะห์สาเหตุปฏิเสธงาน · จุดอ่อนระบบ</p>
+            <p>จัดการสิทธิ์ผู้ใช้ · เปลี่ยน Role · วิเคราะห์สาเหตุปฏิเสธงาน · ข้อมูลเชิงลึกเพื่อปรับปรุง</p>
           </div>
         </div>
       </div>
 
-      <!-- ===== SOP 01: Customer ===== -->
+      <!-- ========== SOP-01: CUSTOMER ========== -->
       <div class="sop-section">
         <div class="sop-header">
           <i class="fas fa-user-edit"></i>
-          <h3>SOP-01: การจ้างงานและสั่งผลิต</h3>
-          <span class="role-tag role-customer">ลูกค้า</span>
+          <h3>SOP-01: ฝั่งลูกค้า (Customer Flow)</h3>
+          <span class="role-tag role-customer">Customer</span>
         </div>
 
+        <!-- WI-C01 -->
         <div class="wi-step">
-          <h4>ขั้นตอนที่ 1: การเปิดใบงาน (Order Placement) <span>WI-C01</span></h4>
-          <p style="font-size:13px; color:var(--text-sub);">ลูกค้ากรอกรายละเอียดงานจ้างผ่านระบบออนไลน์</p>
+          <h4>WI-C01 — สมัครสมาชิก (Register)</h4>
+          <p>ลูกค้าใหม่ที่ยังไม่มีบัญชี กรอกข้อมูลผ่านฟอร์ม Register บน index.html</p>
           <div class="wi-details">
             <div class="wi-box">
-              <strong>ข้อมูลนำเข้า (Input)</strong>
-              รายละเอียดงาน, งบประมาณ, และสัดส่วน (อก/เอว/ยาว)
+              <strong>ข้อมูลที่ต้องกรอก (Input)</strong>
+              <ul>
+                <li>ชื่อ-นามสกุลจริง (full_name)</li>
+                <li>ชื่อผู้ใช้งาน (username) — ห้ามซ้ำ</li>
+                <li>รหัสผ่าน (password)</li>
+                <li>เบอร์โทรศัพท์ (phone) — ใช้กู้คืนรหัสผ่าน</li>
+              </ul>
             </div>
             <div class="wi-box">
               <strong>ผลลัพธ์ (Output)</strong>
-              รหัสงาน (RN), ใบเสร็จดิจิทัล, การแจ้งเตือนเจ้าของร้าน
+              <ul>
+                <li>User ID: <code>U-XXXXXXXX</code> (8 หลัก)</li>
+                <li>Role: <code>customer</code> (กำหนดอัตโนมัติ)</li>
+                <li>Session เก็บลง <code>localStorage</code></li>
+                <li>Email แจ้งเจ้าของร้านมีสมาชิกใหม่</li>
+              </ul>
             </div>
           </div>
-          <div class="system-badge"><i class="fas fa-robot"></i> System: บันทึกลง Google Sheets [JOBS]</div>
+          <div class="system-badge"><i class="fas fa-database"></i> Backend: POST action=register → ตรวจ username ซ้ำ → append USERS sheet → sendNotify()</div>
+          <div class="warn-box"><i class="fas fa-exclamation-triangle"></i> <b>Validation:</b> ระบบตรวจสอบ username ซ้ำก่อน insert — ถ้าซ้ำจะ return error "ชื่อผู้ใช้งานนี้ถูกใช้ไปแล้ว" โดยไม่บันทึก</div>
         </div>
-
         <div class="flow-connector"><i class="fas fa-long-arrow-alt-down"></i></div>
 
+        <!-- WI-C02 -->
         <div class="wi-step">
-          <h4>ขั้นตอนที่ 2: การติดตามสถานะ (Tracking) <span>WI-C02</span></h4>
+          <h4>WI-C02 — เข้าสู่ระบบ (Login)</h4>
+          <p>ตรวจสอบ username + password กับ USERS sheet โดยตรง</p>
           <div class="wi-details">
             <div class="wi-box">
-              <strong>สถานะในระบบ</strong>
-              รอรับงาน → รับงานแล้ว → กำลังเย็บ → เสร็จสมบูรณ์
+              <strong>การล็อกอิน</strong>
+              <ul>
+                <li>กรอก username + password</li>
+                <li>ติ๊ก "จดจำฉัน" → บันทึกลง <code>localStorage</code></li>
+                <li>ไม่ติ๊ก → บันทึกลง <code>sessionStorage</code> (ปิดแล้วหาย)</li>
+              </ul>
             </div>
             <div class="wi-box">
-              <strong>การตอบสนอง</strong>
-              ดูรูปความคืบหน้า, ยืนยัน+Rating, หรือส่งเคลมแก้ไข
+              <strong>ข้อมูลที่ได้รับหลัง Login</strong>
+              <ul>
+                <li><code>user_id</code>, <code>username</code></li>
+                <li><code>role</code>: customer / tailor / boss</li>
+                <li><code>full_name</code></li>
+                <li>Demo: admin / 1234 (bypass hardcoded)</li>
+              </ul>
             </div>
           </div>
+          <div class="system-badge"><i class="fas fa-database"></i> Backend: POST action=login → เปรียบเทียบ USERS sheet → คืน user object (ไม่ส่ง password กลับ)</div>
+          <div class="system-badge warn"><i class="fas fa-bell"></i> หากล็อกอินด้วย role=boss → ระบบส่ง Email แจ้งเตือน "มีการเข้าสู่ระบบ BOSS"</div>
+        </div>
+        <div class="flow-connector"><i class="fas fa-long-arrow-alt-down"></i></div>
+
+        <!-- WI-C03 -->
+        <div class="wi-step">
+          <h4>WI-C03 — สั่งงานจ้าง (Place Order)</h4>
+          <p>ลูกค้ากรอกแบบฟอร์มสั่งงาน — ระบบสร้างใบงานและแจ้งเจ้าของร้านทันที</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>ข้อมูลในใบสั่งงาน</strong>
+              <ul>
+                <li>ชื่อลูกค้า + เบอร์โทร + Line ID</li>
+                <li>รายละเอียดงาน (≥ 10 ตัวอักษร)</li>
+                <li>ประเภทชุด (เดรส / สูท / กางเกง ฯลฯ)</li>
+                <li>งบประมาณ (ตัวเลข > 0)</li>
+                <li>สัดส่วนร่างกาย: อก / เอว / สะโพก / ยาว / ไหล่</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ผลลัพธ์</strong>
+              <ul>
+                <li>Job ID: UUID (<code>xxxxxxxx-xxxx-...</code>)</li>
+                <li>เลขที่ใบงาน: <code>RN-XXXX-XXXX</code></li>
+                <li>สถานะเริ่มต้น: <code>pending</code></li>
+                <li>Modal ใบเสร็จดิจิทัล (copy RN)</li>
+                <li>Email แจ้งร้าน: ลูกค้า / งาน / งบประมาณ</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-database"></i> Backend: POST action=create → uuid() + RN-XXXX-XXXX → appendRow JOBS → sendNotify()</div>
+        </div>
+        <div class="flow-connector"><i class="fas fa-long-arrow-alt-down"></i></div>
+
+        <!-- WI-C04 -->
+        <div class="wi-step">
+          <h4>WI-C04 — ติดตามสถานะ (Job Tracking)</h4>
+          <p>ลูกค้าดูงานของตัวเองได้ทันที ระบบกรอง user_id อัตโนมัติ</p>
+          <div class="wi-details-3">
+            <div class="wi-box">
+              <strong>สีแสดงสถานะ</strong>
+              <ul>
+                <li>เหลือง = รอรับงาน</li>
+                <li>ฟ้า = รับงานแล้ว</li>
+                <li>ส้ม = กำลังเย็บ</li>
+                <li>เขียว = เสร็จสมบูรณ์</li>
+                <li>แดง = ยกเลิก/ปฏิเสธ</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ข้อมูลที่เห็นในใบงาน</strong>
+              <ul>
+                <li>เลขที่ RN + สถานะ</li>
+                <li>ชื่อช่างที่รับงาน</li>
+                <li>รูปความคืบหน้า (URL)</li>
+                <li>วันที่สร้าง</li>
+                <li>เหตุผล (กรณียกเลิก)</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ปุ่มที่ใช้ได้ตามสถานะ</strong>
+              <ul>
+                <li>pending → ยกเลิกงานได้</li>
+                <li>accepted → ยกเลิกได้ + ดูช่าง</li>
+                <li>sewing → ดูรูปความคืบหน้า</li>
+                <li>finished → ยืนยัน + Rating</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-database"></i> Frontend: ดึงข้อมูลจาก GET (doGet) → filter jobs ที่ user_id ตรงกัน</div>
+        </div>
+        <div class="flow-connector"><i class="fas fa-long-arrow-alt-down"></i></div>
+
+        <!-- WI-C05 -->
+        <div class="wi-step" style="border-left-color:var(--success);">
+          <h4 style="color:var(--success);">WI-C05 — ยืนยันรับงาน + ให้คะแนน (Confirm & Rate)</h4>
+          <p>เมื่องานสถานะ <code>finished</code> ลูกค้ากดยืนยันรับงานและให้ Rating</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>ขั้นตอน</strong>
+              <ul>
+                <li>กดปุ่ม "ยืนยันรับงาน" บนใบงาน</li>
+                <li>เลือกดาว 1-5 (5 = ดีมาก)</li>
+                <li>กด confirm → ส่งข้อมูล</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ผลกระทบ</strong>
+              <ul>
+                <li>คอลัมน์ <code>rating</code> ถูกบันทึกลง JOBS</li>
+                <li>คะแนนปรากฏในสถิติผลงานช่าง</li>
+                <li>ช่างเห็นคะแนนในแท็บ "รายได้ของฉัน"</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge success"><i class="fas fa-database"></i> Backend: POST action=update_status, status=finished, rating=X → บันทึก col 14 ของ JOBS</div>
+        </div>
+        <div class="flow-connector"><i class="fas fa-long-arrow-alt-down"></i></div>
+
+        <!-- WI-C06 -->
+        <div class="wi-step" style="border-left-color:#ef4444;">
+          <h4 style="color:#ef4444;">WI-C06 — ยกเลิกงาน (Cancel Order)</h4>
+          <p>ยกเลิกได้เฉพาะงานสถานะ <code>pending</code> หรือ <code>accepted</code></p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>เงื่อนไข</strong>
+              <ul>
+                <li>สถานะต้องเป็น pending หรือ accepted</li>
+                <li>ต้องระบุเหตุผลการยกเลิก</li>
+                <li>หลังยกเลิก: ไม่สามารถยกเลิกคำสั่งยกเลิกได้</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ผลกระทบ</strong>
+              <ul>
+                <li>Status → <code>cancelled</code></li>
+                <li>เหตุผลบันทึก col <code>cancellation_reason</code></li>
+                <li>Email แจ้งเจ้าของร้านทันที</li>
+                <li>สต๊อกที่หักไปแล้ว <b>ไม่</b>ถูกคืน (Boss ต้องแก้เอง)</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge danger"><i class="fas fa-database"></i> Backend: POST action=update_status, status=cancelled, cancellation_reason="..." → sendNotify()</div>
+        </div>
+
+        <!-- WI-C07 -->
+        <div class="wi-step" style="border-left-color:#8b5cf6;">
+          <h4 style="color:#8b5cf6;">WI-C07 — ส่งข้อร้องเรียน/เคลมงาน (Dispute)</h4>
+          <p>ลูกค้าพบปัญหางานไม่ตรงตามสั่ง สามารถส่ง note ถึงช่างและเจ้าของร้าน</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>วิธีใช้</strong>
+              <ul>
+                <li>กดปุ่ม "แจ้งปัญหา/เคลม" บนใบงาน</li>
+                <li>กรอกรายละเอียดปัญหา</li>
+                <li>ส่ง dispute_notes</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ผลลัพธ์</strong>
+              <ul>
+                <li>บันทึกลง col <code>dispute_notes</code> ใน JOBS</li>
+                <li>Boss เห็นใน Tab วิเคราะห์ระบบ</li>
+                <li>ไม่เปลี่ยน status อัตโนมัติ</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-database"></i> Backend: POST action=update_status, dispute_notes="..." → update col 18 ของ JOBS</div>
+        </div>
+
+        <!-- WI-C08 -->
+        <div class="wi-step">
+          <h4>WI-C08 — ลืมรหัสผ่าน (Forgot Password)</h4>
+          <p>ยืนยันตัวตนด้วย username + เบอร์โทรที่ลงทะเบียนไว้ แล้วตั้งรหัสใหม่</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>ขั้นตอน</strong>
+              <ul>
+                <li>กดลิงก์ "ลืมรหัสผ่าน?" ที่หน้า Login</li>
+                <li>กรอก username + เบอร์โทร + รหัสใหม่</li>
+                <li>ระบบตรวจสอบ username และ phone ตรงกันใน USERS</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ผลลัพธ์</strong>
+              <ul>
+                <li>อัปเดต password ใหม่ใน USERS sheet</li>
+                <li>บันทึก Log: RESET_PASSWORD</li>
+                <li>Email แจ้ง "กู้คืนรหัสผ่านสำเร็จ"</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-database"></i> Backend: POST action=reset_password → verify username+phone → update col 3 ของ USERS → logEvent()</div>
         </div>
       </div>
 
-      <!-- ===== SOP 02: Tailor ===== -->
+      <!-- ========== SOP-02: TAILOR ========== -->
       <div class="sop-section">
         <div class="sop-header">
           <i class="fas fa-cut"></i>
-          <h3>SOP-02: กระบวนการผลิตและสต็อก</h3>
-          <span class="role-tag role-tailor">ช่างเย็บผ้า</span>
+          <h3>SOP-02: ฝั่งช่างเย็บผ้า (Tailor Flow)</h3>
+          <span class="role-tag role-tailor">Tailor</span>
         </div>
 
+        <!-- WI-T01 -->
         <div class="wi-step">
-          <h4>ขั้นตอนที่ 1: การรับงานและตัดสต็อก <span>WI-T01</span></h4>
+          <h4>WI-T01 — เข้าสู่ระบบและดูงาน (Login & View Jobs)</h4>
+          <p>ช่างเข้าระบบผ่าน <b>tailor.html</b> เท่านั้น — ต่างจาก index.html ที่เป็นฝั่งลูกค้า</p>
           <div class="wi-details">
             <div class="wi-box">
-              <strong>การปฏิบัติงาน</strong>
-              ตรวจสอบงานใหม่ใน Dashboard และกด "รับงาน"
+              <strong>หน้าที่เห็นหลัง Login (Role: tailor)</strong>
+              <ul>
+                <li>Tab "งานใหม่" — งาน pending รอรับ</li>
+                <li>Tab "กำลังเย็บ" — งานที่รับแล้ว (accepted/sewing)</li>
+                <li>Tab "รายได้ของฉัน" — สรุปรายได้ + เบิกเงิน</li>
+                <li>Badge แจ้งเตือนจำนวนงานใหม่</li>
+              </ul>
             </div>
             <div class="wi-box">
-              <strong>ระบบสต็อก</strong>
-              เลือกวัสดุจากคลัง ระบบคำนวณต้นทุนและหักจำนวนอัตโนมัติ
+              <strong>หน้าที่ไม่เห็น (Boss only)</strong>
+              <ul>
+                <li>Tab ภาพรวม / สต๊อก / ผลงานช่าง</li>
+                <li>Tab การเงิน / P&L / วิเคราะห์</li>
+                <li>การจัดการสิทธิ์ผู้ใช้</li>
+                <li>Boss Navigation Hub ด้านบน</li>
+              </ul>
             </div>
           </div>
-          <div class="system-badge"><i class="fas fa-robot"></i> System: อัปเดตตาราง [STOCK] และคำนวณต้นทุนวัสดุ</div>
+          <div class="system-badge"><i class="fas fa-eye"></i> Frontend: ตรวจสอบ role จาก localStorage → ซ่อน/แสดง element ที่มี class <code>.boss-only</code></div>
         </div>
-
         <div class="flow-connector"><i class="fas fa-long-arrow-alt-down"></i></div>
 
-        <div class="wi-step">
-          <h4>ขั้นตอนที่ 2: การรายงานสถานะผลิต <span>WI-T02</span></h4>
+        <!-- WI-T02 -->
+        <div class="wi-step" style="border-left-color:#10b981;">
+          <h4 style="color:#10b981;">WI-T02 — รับงาน + หักสต๊อก (Accept Job & Deduct Stock)</h4>
+          <p>ช่างพิจารณางานใหม่ กดรับงาน พร้อมเลือกวัสดุจากคลังสต๊อก</p>
           <div class="wi-details">
             <div class="wi-box">
-              <strong>กำลังเย็บ (Sewing)</strong>
-              อัปเดตรูปถ่ายความคืบหน้า (วางลิงก์ Google Drive) ให้ลูกค้าเห็น
+              <strong>ขั้นตอนการรับงาน</strong>
+              <ul>
+                <li>ดูรายละเอียดงาน: ประเภท / สัดส่วน / งบ</li>
+                <li>กดปุ่ม "รับงาน"</li>
+                <li>เลือก Stock Item + ระบุจำนวนที่ใช้</li>
+                <li>กดยืนยัน</li>
+              </ul>
             </div>
             <div class="wi-box">
-              <strong>งานเสร็จ (Finished)</strong>
-              แจ้งระบบ → ระบบส่ง Email แจ้งเจ้าของร้านเตรียมส่งมอบ
+              <strong>สิ่งที่ระบบทำอัตโนมัติ</strong>
+              <ul>
+                <li>Status → <code>accepted</code></li>
+                <li>บันทึก tailor_name ลง JOBS</li>
+                <li>หักจำนวนสต๊อก (qty - qtyUsed)</li>
+                <li>คำนวณ material_cost = qty × unit_price</li>
+                <li>ถ้า qty ≤ min_threshold → Email เตือน "ของใกล้หมด"</li>
+              </ul>
             </div>
           </div>
+          <div class="system-badge success"><i class="fas fa-database"></i> Backend: POST action=update_status, status=accepted, stock_id, stock_qty → update STOCK (col4,8) + update JOBS (col15: material_cost)</div>
+          <div class="warn-box"><i class="fas fa-info-circle"></i> <b>สต๊อกจะถูกหักเฉพาะเมื่อ</b> stock_id ถูกส่งมาพร้อมกับ status=accepted เท่านั้น — ถ้าไม่เลือกวัสดุ material_cost จะเป็น 0</div>
+        </div>
+        <div class="flow-connector"><i class="fas fa-long-arrow-alt-down"></i></div>
+
+        <!-- WI-T03 -->
+        <div class="wi-step" style="border-left-color:#ef4444;">
+          <h4 style="color:#ef4444;">WI-T03 — ปฏิเสธงาน (Reject Job)</h4>
+          <p>ช่างไม่สามารถรับงานได้ ต้องระบุเหตุผลทุกครั้ง</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>เหตุผลที่พบบ่อย</strong>
+              <ul>
+                <li>วัสดุที่ลูกค้าระบุไม่มีในสต๊อก</li>
+                <li>งานเกินความสามารถหรือไม่ถนัด</li>
+                <li>งานซ้ำซ้อนกับที่รับไปแล้ว</li>
+                <li>งบประมาณต่ำเกินไป</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ผลกระทบ</strong>
+              <ul>
+                <li>Status → <code>rejected</code></li>
+                <li>บันทึกเหตุผลลง <code>cancellation_reason</code></li>
+                <li>Email แจ้งเจ้าของร้าน</li>
+                <li>ปรากฏในแท็บ "วิเคราะห์ปัญหา" ของ Boss</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge danger"><i class="fas fa-database"></i> Backend: POST action=update_status, status=rejected, cancellation_reason="..." → sendNotify() + logEvent()</div>
+        </div>
+        <div class="flow-connector"><i class="fas fa-long-arrow-alt-down"></i></div>
+
+        <!-- WI-T04 -->
+        <div class="wi-step">
+          <h4>WI-T04 — อัปเดตความคืบหน้า (Progress Update)</h4>
+          <p>ช่างอัปโหลดรูปภาพงาน และเปลี่ยนสถานะเป็น "กำลังเย็บ"</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>การอัปโหลดรูปภาพ</strong>
+              <ul>
+                <li>อัปโหลดรูปไป Google Drive ก่อน</li>
+                <li>คัดลอก Shareable Link มาวาง</li>
+                <li>ระบบบันทึก URL ลง col <code>progress_photo</code></li>
+                <li>ลูกค้าเห็นรูปแบบ real-time (หลัง refresh)</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ผลลัพธ์</strong>
+              <ul>
+                <li>Status → <code>sewing</code></li>
+                <li>รูปปรากฏในใบงานของลูกค้า</li>
+                <li>บันทึก Log: UPDATE_STATUS → sewing</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-database"></i> Backend: POST action=update_status, status=sewing, progress_photo="URL" → update col9 + col17 ของ JOBS</div>
+        </div>
+        <div class="flow-connector"><i class="fas fa-long-arrow-alt-down"></i></div>
+
+        <!-- WI-T05 -->
+        <div class="wi-step" style="border-left-color:var(--success);">
+          <h4 style="color:var(--success);">WI-T05 — แจ้งงานเสร็จ (Mark Finished)</h4>
+          <p>ช่างทำงานเสร็จสมบูรณ์ กดแจ้งเสร็จ — ระบบ notify เจ้าของร้านเพื่อนัดส่งมอบ</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>เงื่อนไข</strong>
+              <ul>
+                <li>สถานะต้องเป็น accepted หรือ sewing</li>
+                <li>ไม่จำเป็นต้องมีรูปความคืบหน้า</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ผลกระทบ</strong>
+              <ul>
+                <li>Status → <code>finished</code></li>
+                <li>Email: "งานเสร็จแล้ว! พร้อมส่งมอบ"</li>
+                <li>ลูกค้าเห็นปุ่ม "ยืนยันรับงาน + Rating"</li>
+                <li>รายได้ช่างเพิ่มขึ้นใน Tab "รายได้ของฉัน"</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge success"><i class="fas fa-database"></i> Backend: POST action=update_status, status=finished → sendNotify("✅ งานเสร็จแล้ว...") + logEvent()</div>
+        </div>
+        <div class="flow-connector"><i class="fas fa-long-arrow-alt-down"></i></div>
+
+        <!-- WI-T06 -->
+        <div class="wi-step" style="border-left-color:#ec4899;">
+          <h4 style="color:#ec4899;">WI-T06 — เบิกเงิน (Request Payroll)</h4>
+          <p>ช่างยื่นคำขอเบิกเงินค่าแรงในรอบที่กำหนด รอ Boss อนุมัติ</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>การคำนวณรายได้ช่าง</strong>
+              <ul>
+                <li>รายได้รวม = Σ (budget × 40%) ของงาน finished</li>
+                <li>เลือกรอบ: วันที่ 15 หรือ 30 ของเดือน</li>
+                <li>Gross = ยอดรวมที่ขอเบิก</li>
+                <li>Tax 3% = ภาษีหัก ณ ที่จ่าย</li>
+                <li>Net = Gross - Tax</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>สถานะคำขอ</strong>
+              <ul>
+                <li><code>pending</code> = รอ Boss อนุมัติ</li>
+                <li><code>approved</code> = Boss อนุมัติแล้ว</li>
+                <li>Pay ID: <code>PAY-XXXXXXXX</code></li>
+                <li>บันทึกทุกรายการใน PAYROLL sheet</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-database"></i> Backend: POST action=request_payment → คำนวณ gross/tax/net → appendRow PAYROLL (status=pending)</div>
+          <div class="info-box"><i class="fas fa-info-circle"></i> <b>หมายเหตุ:</b> ระบบไม่ล็อคงานหลังเบิก — Boss ควรตรวจสอบว่าช่างไม่เบิกซ้ำรอบเดิม</div>
         </div>
       </div>
 
-      <!-- ===== SOP 03: Boss ===== -->
+      <!-- ========== SOP-03: BOSS ========== -->
       <div class="sop-section">
         <div class="sop-header">
           <i class="fas fa-chart-line"></i>
-          <h3>SOP-03: การบริหารจัดการและบัญชี</h3>
-          <span class="role-tag role-boss">เจ้าของร้าน</span>
+          <h3>SOP-03: ฝั่งเจ้าของร้าน (Boss Flow)</h3>
+          <span class="role-tag role-boss">Boss</span>
         </div>
 
+        <!-- WI-B01 -->
         <div class="wi-step">
-          <h4>ระบบวิเคราะห์ P/L และค่าแรง <span>WI-B01</span></h4>
-          <div class="wi-details">
+          <h4>WI-B01 — ตรวจ Dashboard รายวัน</h4>
+          <p>เปิดแอปทุกเช้า ตรวจสอบสถานะโดยรวม ก่อนเริ่มงาน</p>
+          <div class="wi-details-3">
             <div class="wi-box">
-              <strong>Revenue Split</strong>
-              ช่าง 40% (ค่าแรง) / ร้าน 60% (กำไรเบื้องต้น)
+              <strong>การ์ดแถวบน (วันนี้)</strong>
+              <ul>
+                <li>งานวันนี้ (สร้างวันนี้)</li>
+                <li>รายได้วันนี้ (budget รวม)</li>
+                <li>งานเสร็จวันนี้</li>
+              </ul>
             </div>
             <div class="wi-box">
-              <strong>Net Profit</strong>
-              กำไรร้าน 60% หักลบต้นทุนวัสดุจริงจากสต็อก
+              <strong>สถิติสะสม</strong>
+              <ul>
+                <li>รายได้รวมทั้งหมด</li>
+                <li>งานค้างในระบบ (pending)</li>
+                <li>กำลังตัดเย็บ (accepted+sewing)</li>
+                <li>ทำสำเร็จทั้งหมด</li>
+                <li>จำนวนปฏิเสธ</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>กราฟ (Lazy Load)</strong>
+              <ul>
+                <li>กราฟรายได้รายเดือน (Bar)</li>
+                <li>สัดส่วนประเภทชุด (Pie/Doughnut)</li>
+                <li>มูลค่าสต๊อกแยกหมวด (Bar)</li>
+                <li>ค่าแรงช่าง 40/60 ต่อคน</li>
+              </ul>
             </div>
           </div>
-          <div class="system-badge"><i class="fas fa-robot"></i> System: ประมวลผลจากตาราง [JOBS] และ [PAYROLL]</div>
+          <div class="system-badge"><i class="fas fa-eye"></i> Frontend: คำนวณทั้งหมดจาก jobs/stock array ที่ดึงมาจาก doGet — ไม่มี API แยกสำหรับ stats</div>
         </div>
 
-        <div class="wi-step" style="border-left-color:var(--success);">
-          <h4 style="color:var(--success);">ระบบแจ้งเตือน (Notifications) <span style="background:var(--success);">WI-B02</span></h4>
+        <!-- WI-B02 -->
+        <div class="wi-step" style="border-left-color:#3b82f6;">
+          <h4 style="color:#3b82f6;">WI-B02 — จัดการสต๊อกวัสดุ (Stock Management)</h4>
           <div class="wi-details">
             <div class="wi-box">
-              <strong>Email (อัตโนมัติ)</strong>
-              แจ้งเตือนงานใหม่, งานเสร็จ, สมาชิกใหม่ ทาง Email ของเจ้าของ Script
+              <strong>การดูและกรองสต๊อก</strong>
+              <ul>
+                <li>ดูรายการทั้งหมดใน Tab "สต๊อก"</li>
+                <li>ติ๊ก "กรองเฉพาะของใกล้หมด" → แสดงเฉพาะที่ qty ≤ min_threshold</li>
+                <li>แก้ไขจำนวนได้ inline โดยคลิกที่ตัวเลข</li>
+              </ul>
             </div>
             <div class="wi-box">
-              <strong>การตั้งค่า</strong>
-              ไม่ต้องตั้งค่าเพิ่ม — ส่งไปยัง Email ของ Google Account ที่ Deploy Script
+              <strong>เพิ่มรายการสต๊อกใหม่</strong>
+              <ul>
+                <li>กดปุ่ม "+ เพิ่มรายการ"</li>
+                <li>กรอก: ชื่อ, หมวดหมู่, จำนวน, หน่วย, ราคา/หน่วย, ขั้นต่ำ</li>
+                <li>Item ID: <code>STK-XXXXXX</code> (สร้างอัตโนมัติ)</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-database"></i> Backend: POST action=add_stock → STK-UUID → appendRow STOCK | POST action=update_stock → update col4+col8</div>
+          <div class="warn-box"><i class="fas fa-exclamation-triangle"></i> <b>ข้อควรระวัง:</b> ระบบไม่มีการคืนสต๊อกอัตโนมัติเมื่อยกเลิกงาน Boss ต้องปรับจำนวนเองหากมีการยกเลิกหลังรับงาน</div>
+        </div>
+
+        <!-- WI-B03 -->
+        <div class="wi-step" style="border-left-color:#f59e0b;">
+          <h4 style="color:#f59e0b;">WI-B03 — ดูผลงานและค่าแรงช่าง (Performance)</h4>
+          <p>วิเคราะห์ผลงานแต่ละคนในแท็บ "ผลงานช่าง" — ใช้สำหรับประเมินและคิดค่าแรง</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>ข้อมูลที่แสดงต่อช่าง 1 คน</strong>
+              <ul>
+                <li>จำนวนงานที่ทำเสร็จ</li>
+                <li>ยอดรายได้รวม (budget sum)</li>
+                <li>ค่าแรง 40% = budget × 0.4</li>
+                <li>ต้นทุนวัสดุที่หักไป (material_cost)</li>
+                <li>กำไรร้านสุทธิ = (budget × 0.6) - material_cost</li>
+                <li>Rating เฉลี่ย</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>การใช้งาน</strong>
+              <ul>
+                <li>ใช้ประกอบการพิจารณาเบิกเงิน</li>
+                <li>ตรวจสอบประสิทธิภาพช่างแต่ละคน</li>
+                <li>วางแผนรับงานตามความสามารถ</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-eye"></i> Frontend: group jobs by tailor_name ที่ status=finished → คำนวณทั้งหมด client-side</div>
+        </div>
+
+        <!-- WI-B04 -->
+        <div class="wi-step" style="border-left-color:#ec4899;">
+          <h4 style="color:#ec4899;">WI-B04 — อนุมัติเบิกเงิน (Payroll Approval)</h4>
+          <p>Boss ตรวจสอบคำขอเบิกเงินทั้งหมด และกดอนุมัติหรือปฏิเสธ</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>ข้อมูลที่เห็นต่อคำขอ</strong>
+              <ul>
+                <li>Pay ID + ชื่อช่าง + รอบ (15/30)</li>
+                <li>Gross Amount (ก่อนหักภาษี)</li>
+                <li>Tax 3% (จำนวนภาษี)</li>
+                <li>Net Amount (ยอดโอนจริง)</li>
+                <li>วันที่ยื่นคำขอ</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>การดำเนินการ</strong>
+              <ul>
+                <li>กดปุ่ม "อนุมัติ" → status = <code>approved</code></li>
+                <li>ไม่มีปุ่มปฏิเสธ (Boss ต้องติดต่อช่างเอง)</li>
+                <li>ประวัติทั้งหมดดูได้ใน PAYROLL sheet</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-database"></i> Backend: POST action=approve_payment, pay_id="PAY-XXX" → update col8 ของ PAYROLL เป็น "approved"</div>
+        </div>
+
+        <!-- WI-B05 -->
+        <div class="wi-step">
+          <h4>WI-B05 — รายงาน P&L รายเดือน (Profit & Loss)</h4>
+          <p>วิเคราะห์กำไร-ขาดทุนจริงของร้านในแต่ละเดือน</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>สูตรคำนวณ</strong>
+              <ul>
+                <li>Revenue = Σ budget (งาน finished)</li>
+                <li>Material Cost = Σ material_cost</li>
+                <li>Labor Cost (ช่าง 40%) = Σ budget × 0.4</li>
+                <li><b>Net Profit = Revenue − Material Cost − Labor Cost</b></li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>วิธีดูรายงาน</strong>
+              <ul>
+                <li>กดแท็บ "กำไร-ขาดทุน"</li>
+                <li>ระบบจัดกลุ่มตามเดือน (YYYY-MM)</li>
+                <li>ดูกราฟเปรียบเทียบรายเดือนในแท็บ "ภาพรวม"</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-eye"></i> Frontend: คำนวณ client-side จาก jobs array → group by month ของ created_at</div>
+        </div>
+
+        <!-- WI-B06 -->
+        <div class="wi-step">
+          <h4>WI-B06 — จัดการสิทธิ์ผู้ใช้ (User & Role Management)</h4>
+          <p>เพิ่มช่างใหม่ เปลี่ยน role จาก customer → tailor หรือ boss</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>วิธีเพิ่มช่างใหม่</strong>
+              <ul>
+                <li>ให้ช่างสมัครสมาชิกผ่าน index.html ก่อน</li>
+                <li>Boss ไปที่แท็บ "จัดการสิทธิ์"</li>
+                <li>ค้นหาชื่อผู้ใช้งาน</li>
+                <li>กด Dropdown เลือก role ใหม่</li>
+                <li>บันทึก Log อัตโนมัติ</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>Role ที่มีในระบบ</strong>
+              <ul>
+                <li><code>customer</code> — สั่งงาน / ติดตามสถานะ</li>
+                <li><code>tailor</code> — รับงาน / อัปเดต / เบิกเงิน</li>
+                <li><code>boss</code> — เข้าถึงทุกระบบ</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-database"></i> Backend: POST action=update_role, user_id, role → update col4 USERS → logEvent(UPDATE_ROLE)</div>
+        </div>
+
+        <!-- WI-B07 -->
+        <div class="wi-step">
+          <h4>WI-B07 — วิเคราะห์งานปฏิเสธ (Rejection Analysis)</h4>
+          <p>Boss ดูรายการงานที่ถูกปฏิเสธพร้อมเหตุผล เพื่อปรับปรุงกระบวนการ</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>วิธีใช้</strong>
+              <ul>
+                <li>ไปที่แท็บ "วิเคราะห์ปัญหา"</li>
+                <li>ดูรายการงาน status=rejected</li>
+                <li>ดูเหตุผลแต่ละงาน</li>
+                <li>ดู dispute_notes จากลูกค้า</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ประโยชน์</strong>
+              <ul>
+                <li>ระบุปัญหาสต๊อกที่หมดบ่อย</li>
+                <li>ดูช่างที่ปฏิเสธงานบ่อยผิดปกติ</li>
+                <li>ปรับราคาหรือประเภทงานที่รับ</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-eye"></i> Frontend: filter jobs ที่ status=rejected หรือ cancelled → แสดง cancellation_reason</div>
+        </div>
+
+        <!-- WI-B08 -->
+        <div class="wi-step" style="border-left-color:#6366f1;">
+          <h4 style="color:#6366f1;">WI-B08 — เพิ่มค่าใช้จ่ายงาน (Additional Cost)</h4>
+          <p>Boss ปรับราคาสุดท้ายของงาน กรณีมีค่าใช้จ่ายเพิ่มเติมที่ไม่ได้ตกลงในตอนแรก</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>การใช้งาน</strong>
+              <ul>
+                <li>เปิดใบงานใดก็ได้</li>
+                <li>กรอกจำนวนเงินที่เพิ่มเติม</li>
+                <li>กด "อัปเดตราคา"</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ผลลัพธ์</strong>
+              <ul>
+                <li>budget ใหม่ = budget เดิม + additional_cost</li>
+                <li>กระทบ P&L และค่าแรงช่าง 40%</li>
+                <li>Log: UPDATE_COST บันทึกไว้</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-database"></i> Backend: POST action=update_additional_cost, id, additional_cost → final = budget + additional → update col8 JOBS</div>
+        </div>
+      </div>
+
+      <!-- ========== SOP-04: BACKEND SYSTEM ========== -->
+      <div class="sop-section">
+        <div class="sop-header">
+          <i class="fas fa-server"></i>
+          <h3>SOP-04: ระบบหลังบ้าน (Backend Architecture)</h3>
+          <span class="role-tag role-system"><i class="fas fa-cog"></i> Google Apps Script</span>
+        </div>
+
+        <!-- WI-S01: Architecture -->
+        <div class="wi-step" style="border-left-color:#6366f1;">
+          <h4 style="color:#6366f1;">WI-S01 — สถาปัตยกรรมระบบ (System Architecture)</h4>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>Stack</strong>
+              <ul>
+                <li><b>Frontend:</b> HTML + CSS + Vanilla JS (ไฟล์ static)</li>
+                <li><b>Backend:</b> Google Apps Script (Code.gs)</li>
+                <li><b>Database:</b> Google Sheets (7 sheets)</li>
+                <li><b>Notification:</b> Gmail API (MailApp) + LINE Notify (legacy)</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>การสื่อสาร Frontend ↔ Backend</strong>
+              <ul>
+                <li>GET = <code>doGet(e)</code> → โหลดข้อมูลทั้งหมด (jobs/stock/users/payroll)</li>
+                <li>POST = <code>doPost(e)</code> → ส่ง JSON body ที่มี <code>action</code> field</li>
+                <li>Response: JSON เสมอ (<code>ContentService.MimeType.JSON</code>)</li>
+                <li>CORS: GAS Web App ไม่มี CORS ปัญหา (same origin policy ยกเว้นให้)</li>
+              </ul>
+            </div>
+          </div>
+          <div class="info-box">
+            <i class="fas fa-link"></i> <b>Web App URL:</b> <code>https://script.google.com/macros/s/AKfycbw.../exec</code><br>
+            ต้อง Deploy ใหม่ทุกครั้งที่แก้ไข Code.gs — Version "New deployment" หรือ "Manage deployments"
+          </div>
+        </div>
+
+        <!-- WI-S02: Sheets Structure -->
+        <div class="wi-step" style="border-left-color:#10b981;">
+          <h4 style="color:#10b981;">WI-S02 — โครงสร้าง Google Sheets (7 Sheets)</h4>
+          <table class="sheet-table">
+            <tr><th>Sheet</th><th>คอลัมน์สำคัญ</th><th>จำนวนคอลัมน์</th><th>หมายเหตุ</th></tr>
+            <tr><td><b>JOBS</b></td><td>id, rn, customer_name, phone, line, detail, category, budget, status, tailor_name, user_id, created_at, cancellation_reason, rating, material_cost, measurements, progress_photo, dispute_notes</td><td>18</td><td>งานจ้างทั้งหมด</td></tr>
+            <tr><td><b>USERS</b></td><td>user_id, username, password*, role, full_name, phone</td><td>6</td><td>*password ไม่ถูกส่ง API กลับ</td></tr>
+            <tr><td><b>STOCK</b></td><td>item_id, category, item_name, quantity, unit, unit_price, min_threshold, last_updated</td><td>8</td><td>วัสดุอุปกรณ์</td></tr>
+            <tr><td><b>LOGS</b></td><td>timestamp, user_id, username, action, details, status</td><td>6</td><td>บันทึกกิจกรรมทั้งหมด</td></tr>
+            <tr><td><b>PAYROLL</b></td><td>pay_id, user_id, username, gross_amount, tax_3, net_amount, cycle, status, timestamp</td><td>9</td><td>การเบิกเงินช่าง</td></tr>
+            <tr><td><b>CONFIG</b></td><td>key, value</td><td>2</td><td>line_token (legacy)</td></tr>
+            <tr><td><b>MEASUREMENTS</b></td><td>user_id, chest, waist, hips, length, shoulder, last_updated</td><td>7</td><td>สัดส่วนร่างกายลูกค้า</td></tr>
+          </table>
+          <div class="system-badge success"><i class="fas fa-play"></i> Auto-init: <code>doGet()</code> ตรวจสอบและสร้าง Sheet + Header row อัตโนมัติถ้ายังไม่มี</div>
+        </div>
+
+        <!-- WI-S03: API Actions -->
+        <div class="wi-step">
+          <h4>WI-S03 — API Actions ทั้งหมด (15 Actions)</h4>
+          <p>ทุก Request ส่งผ่าน POST โดยมี <code>action</code> field บน JSON body</p>
+          <table class="api-table">
+            <tr><th>#</th><th>Action</th><th>ผู้ใช้</th><th>ข้อมูลสำคัญที่ส่ง</th><th>ผลลัพธ์</th></tr>
+            <tr><td>1</td><td><code>create</code></td><td>Customer</td><td>customer_name, phone, line, job_detail, category, budget, user_id, measurements</td><td>สร้างใบงานใหม่ใน JOBS + Email notify</td></tr>
+            <tr><td>2</td><td><code>update_status</code></td><td>Tailor/Boss</td><td>id, status, tailor_name, rating, cancellation_reason, progress_photo, dispute_notes, stock_id, stock_qty</td><td>อัปเดตสถานะ + หักสต๊อก + notify + log</td></tr>
+            <tr><td>3</td><td><code>register</code></td><td>ทุกคน</td><td>username, password, full_name, phone</td><td>สร้าง user ใหม่ role=customer</td></tr>
+            <tr><td>4</td><td><code>login</code></td><td>ทุกคน</td><td>username, password</td><td>คืน user object (ไม่มี password)</td></tr>
+            <tr><td>5</td><td><code>request_payment</code></td><td>Tailor</td><td>user_id, username, amount, cycle</td><td>สร้าง payroll record status=pending</td></tr>
+            <tr><td>6</td><td><code>approve_payment</code></td><td>Boss</td><td>pay_id</td><td>อัปเดต payroll status=approved</td></tr>
+            <tr><td>7</td><td><code>reset_password</code></td><td>ทุกคน</td><td>username, phone, new_password</td><td>เปลี่ยน password + log + notify</td></tr>
+            <tr><td>8</td><td><code>update_role</code></td><td>Boss</td><td>user_id, role, admin_id, admin_name</td><td>เปลี่ยน role + log</td></tr>
+            <tr><td>9</td><td><code>change_password</code></td><td>ทุกคน</td><td>user_id, old_password, new_password</td><td>ตรวจ old_pass → เปลี่ยน + log + notify</td></tr>
+            <tr><td>10</td><td><code>update_stock</code></td><td>Boss</td><td>id, quantity</td><td>อัปเดตจำนวนสต๊อก + last_updated</td></tr>
+            <tr><td>11</td><td><code>add_stock</code></td><td>Boss</td><td>category, item_name, quantity, unit, unit_price, min_threshold</td><td>เพิ่มรายการสต๊อกใหม่</td></tr>
+            <tr><td>12</td><td><code>update_profile</code></td><td>Customer</td><td>user_id, full_name, phone, line</td><td>อัปเดต col 5,6,7 ของ USERS</td></tr>
+            <tr><td>13</td><td><code>pay_final_price</code></td><td>Customer</td><td>id</td><td>อัปเดต status=paid + log</td></tr>
+            <tr><td>14</td><td><code>update_additional_cost</code></td><td>Boss</td><td>id, additional_cost</td><td>budget ใหม่ = เดิม + เพิ่ม + log</td></tr>
+            <tr><td>15</td><td><code>update_measurements</code></td><td>Customer</td><td>user_id, chest, waist, hips, length, shoulder</td><td>upsert ใน MEASUREMENTS sheet</td></tr>
+          </table>
+        </div>
+
+        <!-- WI-S04: Notification System -->
+        <div class="wi-step" style="border-left-color:#f59e0b;">
+          <h4 style="color:#f59e0b;">WI-S04 — ระบบแจ้งเตือน (Notification System)</h4>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>Email (Primary — อัตโนมัติ)</strong>
+              <ul>
+                <li>ใช้ <code>MailApp.sendEmail()</code> ของ GAS</li>
+                <li>ส่งไปยัง <code>Session.getActiveUser().getEmail()</code></li>
+                <li>= Email ของ Google Account ที่ Deploy Script</li>
+                <li>ไม่ต้องตั้งค่าเพิ่มเติม</li>
+                <li>Subject: "🔔 TailorHub แจ้งเตือน — [ข้อความบรรทัดแรก]"</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>LINE Notify (Secondary — Legacy)</strong>
+              <ul>
+                <li>สถานะ: <b>Deprecated เมษายน 2025</b></li>
+                <li>Code ยังอยู่แต่ไม่ทำงานแล้ว</li>
+                <li>ถ้าต้องการใช้: ใส่ token ใน CONFIG sheet</li>
+                <li>แนะนำใช้ Email แทน</li>
+              </ul>
+            </div>
+          </div>
+          <div class="wi-box" style="margin-top:10px;">
+            <strong>Events ที่ Trigger การแจ้งเตือน</strong>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top:8px; font-size:12px;">
+              <div>🆕 มีงานจ้างใหม่ (create)</div>
+              <div>✅ งานเสร็จสมบูรณ์ (finished)</div>
+              <div>❌ ลูกค้ายกเลิกงาน (cancelled)</div>
+              <div>🚫 ช่างปฏิเสธงาน (rejected)</div>
+              <div>👤 สมาชิกใหม่ลงทะเบียน (register)</div>
+              <div>🔐 Boss Login เข้าระบบ (login)</div>
+              <div>⚠️ วัสดุสต๊อกใกล้หมด (stock threshold)</div>
+              <div>🔐 เปลี่ยน/กู้คืนรหัสผ่าน</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WI-S05: Logging System -->
+        <div class="wi-step">
+          <h4>WI-S05 — ระบบ Activity Log</h4>
+          <p>ทุก action สำคัญถูกบันทึกลง LOGS sheet ใน Google Sheets อัตโนมัติ</p>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>Format แต่ละ Row ใน LOGS</strong>
+              <ul>
+                <li><code>timestamp</code> — วันเวลา (Date object)</li>
+                <li><code>user_id</code> — UUID ของผู้ทำ</li>
+                <li><code>username</code> — ชื่อผู้ใช้</li>
+                <li><code>action</code> — รหัสกิจกรรม</li>
+                <li><code>details</code> — รายละเอียด</li>
+                <li><code>status</code> — success / error</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>Action Codes ที่บันทึก</strong>
+              <ul>
+                <li><code>UPDATE_STATUS</code> — เปลี่ยนสถานะงาน</li>
+                <li><code>RESET_PASSWORD</code> — กู้คืนรหัสผ่าน</li>
+                <li><code>CHANGE_PASSWORD</code> — เปลี่ยนรหัสผ่าน</li>
+                <li><code>UPDATE_ROLE</code> — เปลี่ยน role</li>
+                <li><code>PAY_FINAL</code> — ลูกค้าชำระเงิน</li>
+                <li><code>UPDATE_COST</code> — Boss เพิ่มค่าใช้จ่าย</li>
+              </ul>
+            </div>
+          </div>
+          <div class="system-badge"><i class="fas fa-code"></i> ฟังก์ชัน: <code>logEvent(ss, userId, username, action, details, status)</code> → appendRow ลง LOGS sheet</div>
+        </div>
+
+        <!-- WI-S06: Security -->
+        <div class="wi-step" style="border-left-color:#ef4444;">
+          <h4 style="color:#ef4444;">WI-S06 — ข้อควรทราบด้านความปลอดภัย (Security Notes)</h4>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>สิ่งที่ระบบปกป้อง</strong>
+              <ul>
+                <li>Password ไม่ถูกส่งกลับใน API Response (<code>getSheetData</code> ข้ามคอลัมน์ password)</li>
+                <li>Reset password ต้องใช้ phone ยืนยัน</li>
+                <li>Change password ต้องรู้ password เดิม</li>
+                <li>Email แจ้งทุกครั้งที่ Boss login</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>ข้อจำกัดที่ต้องระวัง</strong>
+              <ul>
+                <li>Password เก็บเป็น plain text ใน Sheets</li>
+                <li>Demo admin/1234 เป็น hardcode ใน script.js</li>
+                <li>ไม่มี rate limiting / brute force protection</li>
+                <li>Role check ทำฝั่ง frontend เท่านั้น (ไม่มี server-side auth)</li>
+                <li>URL ของ Web App เป็น public สามารถ POST ได้โดยไม่ต้อง login</li>
+              </ul>
+            </div>
+          </div>
+          <div class="warn-box"><i class="fas fa-shield-alt"></i> <b>Production Advice:</b> ระบบนี้เหมาะสำหรับร้านขนาดเล็ก/ทีมภายใน — ถ้า scale ขึ้นควรเพิ่ม server-side auth token และเข้ารหัส password (bcrypt)</div>
+        </div>
+
+        <!-- WI-S07: GAS Limitations -->
+        <div class="wi-step" style="border-left-color:#64748b;">
+          <h4 style="color:#64748b;">WI-S07 — ข้อจำกัดของ Google Apps Script</h4>
+          <div class="wi-details-3">
+            <div class="wi-box">
+              <strong>ขีดจำกัดประสิทธิภาพ</strong>
+              <ul>
+                <li>Execution time สูงสุด 6 นาที/request</li>
+                <li>ข้อมูลเยอะ: getDataRange() ช้า</li>
+                <li>ไม่มี connection pooling</li>
+                <li>1 request ต่อ 1 user ต่อเวลา</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>Real-time</strong>
+              <ul>
+                <li>ไม่มี WebSocket / Push</li>
+                <li>ต้อง refresh หน้าหรือ poll</li>
+                <li>Frontend โหลดข้อมูลทั้งหมด 1 ครั้งตอนเปิด</li>
+                <li>หมุนวนทุก X วินาทีได้ถ้าต้องการ</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>Quota (Free Tier)</strong>
+              <ul>
+                <li>Email: 100 ฉบับ/วัน</li>
+                <li>Url Fetch: 20,000 ครั้ง/วัน</li>
+                <li>Execution: 6 นาที/ครั้ง</li>
+                <li>Script Runtime: 90 นาที/วัน</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- WI-S08: Deploy & Seed -->
+        <div class="wi-step" style="border-left-color:#10b981;">
+          <h4 style="color:#10b981;">WI-S08 — การ Deploy และ Seed ข้อมูล</h4>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>ขั้นตอน Deploy</strong>
+              <ul>
+                <li>เปิด Google Sheets → Extensions → Apps Script</li>
+                <li>วาง Code.gs ลงใน editor</li>
+                <li>กด Deploy → New Deployment → Web App</li>
+                <li>Execute as: <b>Me</b> | Access: <b>Anyone</b></li>
+                <li>Copy Web App URL ไปใส่ใน script.js (<code>GAS_URL</code>)</li>
+                <li>ทุกครั้งแก้ code ต้อง Deploy ใหม่</li>
+              </ul>
+            </div>
+            <div class="wi-box">
+              <strong>Seed ข้อมูลตัวอย่าง</strong>
+              <ul>
+                <li>ใน Apps Script Editor กด Run → <code>seedSampleData()</code></li>
+                <li>จะสร้าง: 5 Users (1 boss + 2 tailor + 2 customer)</li>
+                <li>5 Stock items (ผ้า/ด้าย/กระดุม/ซิป)</li>
+                <li>5 Jobs (ทุก status: finished/sewing/accepted/pending/rejected)</li>
+                <li>รัน 1 ครั้งเท่านั้น — ตรวจสอบ ID ก่อน insert</li>
+              </ul>
+            </div>
+          </div>
+          <div class="success-box"><i class="fas fa-check-circle"></i> <b>Auto-init:</b> เมื่อเรียก <code>doGet()</code> ครั้งแรก ระบบจะสร้าง Sheet ทั้ง 7 พร้อม header row อัตโนมัติ — ไม่ต้องสร้าง Sheet เอง</div>
+        </div>
+      </div>
+
+      <!-- ========== QUICK REFERENCE ========== -->
+      <div class="sop-section">
+        <div class="sop-header">
+          <i class="fas fa-clipboard-list"></i>
+          <h3>Quick Reference — สรุปด่วน</h3>
+        </div>
+        <div class="quick-ref-grid">
+          <div class="quick-ref-card">
+            <h5><i class="fas fa-user" style="color:var(--success);"></i> ลูกค้า (Customer) ทำอะไรได้บ้าง</h5>
+            <ul>
+              <li>สมัครสมาชิก / Login / ลืมรหัสผ่าน</li>
+              <li>สั่งงานจ้าง + กรอกสัดส่วนร่างกาย</li>
+              <li>ดูสถานะงานของตัวเอง</li>
+              <li>ดูรูปความคืบหน้า</li>
+              <li>ยกเลิกงาน (pending/accepted เท่านั้น)</li>
+              <li>ยืนยันรับงาน + ให้ Rating 1-5 ดาว</li>
+              <li>ส่งเคลม/ข้อร้องเรียน</li>
+            </ul>
+          </div>
+          <div class="quick-ref-card">
+            <h5><i class="fas fa-cut" style="color:#3b82f6;"></i> ช่าง (Tailor) ทำอะไรได้บ้าง</h5>
+            <ul>
+              <li>Login ผ่าน tailor.html เท่านั้น</li>
+              <li>ดูงานใหม่ + รับงาน + เลือกสต๊อก</li>
+              <li>ปฏิเสธงาน + ระบุเหตุผล</li>
+              <li>อัปเดตสถานะ (sewing) + อัปโหลดรูป</li>
+              <li>แจ้งงานเสร็จ (finished)</li>
+              <li>ดูรายได้ตัวเอง</li>
+              <li>เบิกเงินรอบ 15/30</li>
+            </ul>
+          </div>
+          <div class="quick-ref-card">
+            <h5><i class="fas fa-user-shield" style="color:var(--warning);"></i> Boss ทำได้ทุกอย่างของช่าง บวกเพิ่ม</h5>
+            <ul>
+              <li>Dashboard สรุปวันนี้ + สถิติรวม + กราฟ</li>
+              <li>จัดการสต๊อก (เพิ่ม/แก้ไข/กรอง)</li>
+              <li>ดูผลงานช่างทุกคน + ค่าแรง</li>
+              <li>อนุมัติเบิกเงิน + ดูภาษีหัก 3%</li>
+              <li>รายงาน P&L รายเดือน</li>
+              <li>จัดการ Role ผู้ใช้ทั้งหมด</li>
+              <li>วิเคราะห์งานปฏิเสธ + เพิ่มค่าใช้จ่าย</li>
+            </ul>
+          </div>
+          <div class="quick-ref-card">
+            <h5><i class="fas fa-server" style="color:#8b5cf6;"></i> ระบบทำอะไรอัตโนมัติ</h5>
+            <ul>
+              <li>สร้าง Sheet 7 แผ่นถ้ายังไม่มี</li>
+              <li>ออก RN-XXXX-XXXX ทุกใบงานใหม่</li>
+              <li>ส่ง Email ทุก Event สำคัญ</li>
+              <li>หักสต๊อกและคำนวณต้นทุนวัสดุ</li>
+              <li>เตือน Email เมื่อสต๊อกใกล้หมด</li>
+              <li>คำนวณภาษีหัก 3% ทุกการเบิกเงิน</li>
+              <li>บันทึก Log ทุก action สำคัญ</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Status flow summary -->
+        <div style="margin-top:15px; padding:15px; background:var(--bg); border-radius:14px;">
+          <p style="font-size:13px; font-weight:600; margin:0 0 10px;"><i class="fas fa-route"></i> สถานะงานครบวงจร</p>
+          <div class="status-flow" style="flex-direction:column; align-items:flex-start; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="status-badge pending">pending</span>
+              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+              <span class="status-badge accepted">accepted</span>
+              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+              <span class="status-badge sewing">sewing</span>
+              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+              <span class="status-badge finished">finished</span>
+              <span style="font-size:12px; color:var(--text-sub); margin-left:8px;">→ ลูกค้ายืนยัน + Rating → จบกระบวนการ</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="status-badge pending">pending</span>
+              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+              <span class="status-badge low-stock">rejected</span>
+              <span style="font-size:12px; color:var(--text-sub); margin-left:8px;">→ ช่างปฏิเสธ + เหตุผล → Boss รับทราบ</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="status-badge pending">pending</span>
+              <span style="color:var(--text-sub); font-size:12px;">หรือ</span>
+              <span class="status-badge accepted">accepted</span>
+              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+              <span class="status-badge low-stock">cancelled</span>
+              <span style="font-size:12px; color:var(--text-sub); margin-left:8px;">→ ลูกค้ายกเลิก + เหตุผล</span>
             </div>
           </div>
         </div>

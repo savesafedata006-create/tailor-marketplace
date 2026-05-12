@@ -90,10 +90,6 @@
         </div>
       </div>
 
-      <div class="section-header boss-only" id="boss-header-stats">
-        <h2><i class="fas fa-user-tie"></i> สถิติภาพรวมและการเงิน</h2>
-      </div>
-
       <div class="dashboard-grid boss-only" id="boss-summary-cards">
         <div class="dash-card income">
           <h3>รายได้รวม</h3>
@@ -123,7 +119,6 @@
         <div id="tailor-performance"></div>
       </div>
 
-      <!-- Monthly P&L Report Section -->
       <!-- Monthly P&L Report Section (Initial State should be hidden) -->
       <div class="boss-only performance-section" id="pl-report-section" style="display: none;">
         <h3><i class="fas fa-file-invoice-dollar"></i> รายงานกำไร-ขาดทุนรายเดือน (P&L)</h3>
@@ -137,69 +132,31 @@
       </div>
 
       <!-- Stock Value Chart Section -->
-      <div class="boss-only performance-section chart-section" id="chart-stock" style="display: none;">
+      <div class="boss-only performance-section chart-section" style="display: none;">
         <h3><i class="fas fa-chart-bar"></i> มูลค่าสต๊อกแยกตามหมวดหมู่</h3>
         <div style="height: 300px;"><canvas id="stockChart"></canvas></div>
       </div>
 
       <!-- Revenue Comparison Chart Section -->
-      <div class="boss-only performance-section chart-section" id="chart-revenue" style="display: none;">
+      <div class="boss-only performance-section chart-section" style="display: none;">
         <h3><i class="fas fa-chart-line"></i> เปรียบเทียบรายได้รายเดือน</h3>
         <div style="height: 300px;"><canvas id="revenueChart"></canvas></div>
       </div>
 
       <!-- Category Revenue Chart Section -->
-      <div class="boss-only performance-section chart-section" id="chart-category" style="display: none;">
+      <div class="boss-only performance-section chart-section" style="display: none;">
         <h3><i class="fas fa-chart-pie"></i> สัดส่วนรายได้แยกตามประเภทชุด</h3>
         <div style="height: 300px;"><canvas id="categoryChart"></canvas></div>
       </div>
 
       <!-- Stock Management Section -->
-      <div class="boss-only performance-section" id="stock-management-section" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+      <div class="boss-only performance-section" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
           <h3 style="margin: 0;"><i class="fas fa-boxes"></i> ระบบจัดการสต๊อกวัสดุอุปกรณ์</h3>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <label class="stock-filter">
-              <input type="checkbox" id="low-stock-filter" onchange="applyStockFilter()">
-              <span> กรองเฉพาะของใกล้หมด</span>
-            </label>
-            <button class="btn-primary" style="padding:8px 14px; font-size:13px;" onclick="document.getElementById('stock-add-form').classList.toggle('open')">
-              <i class="fas fa-plus"></i> เพิ่มรายการ
-            </button>
-          </div>
-        </div>
-        <!-- Add Stock Form -->
-        <div id="stock-add-form" class="stock-add-form">
-          <div class="input-item">
-            <label>ชื่อวัสดุ/อุปกรณ์</label>
-            <input type="text" id="new-item-name" placeholder="เช่น ด้ายสีดำ">
-          </div>
-          <div class="input-item">
-            <label>หมวดหมู่</label>
-            <input type="text" id="new-item-cat" placeholder="เช่น ด้าย, ผ้า, กระดุม">
-          </div>
-          <div class="input-item">
-            <label>จำนวน</label>
-            <input type="number" id="new-item-qty" placeholder="0" min="0">
-          </div>
-          <div class="input-item">
-            <label>หน่วย</label>
-            <input type="text" id="new-item-unit" placeholder="เช่น ม้วน, หลา, เม็ด">
-          </div>
-          <div class="input-item">
-            <label>ราคาต่อหน่วย (฿)</label>
-            <input type="number" id="new-item-price" placeholder="0" min="0">
-          </div>
-          <div class="input-item">
-            <label>จำนวนขั้นต่ำ (แจ้งเตือน)</label>
-            <input type="number" id="new-item-min" placeholder="5" min="1">
-          </div>
-          <div style="grid-column: 1 / -1; display:flex; gap:10px; justify-content:flex-end; padding-top:5px;">
-            <button class="btn-secondary" onclick="document.getElementById('stock-add-form').classList.remove('open')">ยกเลิก</button>
-            <button class="btn-primary" id="add-stock-btn" onclick="addStockItem()">
-              <i class="fas fa-plus"></i> เพิ่มรายการ
-            </button>
-          </div>
+          <label class="stock-filter">
+            <input type="checkbox" id="low-stock-filter" onchange="applyStockFilter()">
+            <span> กรองเฉพาะของใกล้หมด</span>
+          </label>
         </div>
         <div id="stock-list" class="table-container">
           <p class="loader">กำลังตรวจสอบคลังสินค้า...</p>
@@ -252,9 +209,6 @@
       </div>
       
       <div class="tabs">
-        <button onclick="switchTab('dashboard')" class="tab-btn boss-only" id="tab-dashboard" style="display: none;">
-          <i class="fas fa-tachometer-alt"></i> ภาพรวม
-        </button>
         <button onclick="switchTab('pending')" class="tab-btn active" id="tab-pending">
           <i class="fas fa-inbox"></i> งานใหม่
           <span id="pending-badge" class="badge-notify" style="display: none;">0</span>
@@ -268,14 +222,11 @@
         <button onclick="switchTab('stock')" class="tab-btn boss-only" id="tab-stock" style="display: none;">
           <i class="fas fa-warehouse"></i> สต๊อก
         </button>
-        <button onclick="switchTab('performance')" class="tab-btn boss-only" id="tab-performance" style="display: none;">
-          <i class="fas fa-users"></i> ผลงานช่าง
-        </button>
         <button onclick="switchTab('users')" class="tab-btn boss-only" id="tab-users" style="display: none;">
           <i class="fas fa-users-cog"></i> จัดการสิทธิ์
         </button>
         <button onclick="switchTab('payroll')" class="tab-btn boss-only" id="tab-payroll" style="display: none;">
-          <i class="fas fa-money-check-alt"></i> การเงิน
+          <i class="fas fa-money-check-alt"></i> จัดการเงินเดือน
         </button>
         <button onclick="switchTab('pl-report')" class="tab-btn boss-only" id="tab-pl-report" style="display: none;">
           <i class="fas fa-chart-line"></i> กำไร-ขาดทุน
@@ -311,27 +262,23 @@
     </div>
   </div>
 
-  <!-- Bottom Navigation for Mobile (Admin Quick Access) -->
+  <!-- Bottom Navigation for Mobile -->
   <div class="bottom-nav">
-    <div class="nav-item boss-only" onclick="switchTab('dashboard')" id="bnav-dashboard">
-      <i class="fas fa-tachometer-alt"></i>
-      <span>ภาพรวม</span>
+    <div class="nav-item" onclick="location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span>หน้าหลัก</span>
     </div>
-    <div class="nav-item" onclick="switchTab('pending')" id="bnav-pending">
-      <i class="fas fa-inbox"></i>
-      <span>งาน</span>
+    <div class="nav-item" onclick="location.href='present.html'">
+      <i class="fas fa-project-diagram"></i>
+      <span>วิธีใช้งาน</span>
     </div>
-    <div class="nav-item boss-only" onclick="switchTab('stock')" id="bnav-stock">
-      <i class="fas fa-warehouse"></i>
-      <span>สต๊อก</span>
+    <div class="nav-item" onclick="location.href='portfolio.html'">
+      <i class="fas fa-images"></i>
+      <span>ผลงาน</span>
     </div>
-    <div class="nav-item boss-only" onclick="switchTab('payroll')" id="bnav-payroll">
-      <i class="fas fa-money-check-alt"></i>
-      <span>การเงิน</span>
-    </div>
-    <div class="nav-item" onclick="switchTab('my-stats')" id="bnav-mystats">
-      <i class="fas fa-user-circle"></i>
-      <span>รายได้ฉัน</span>
+    <div class="nav-item" onclick="location.href='contact.html'">
+      <i class="fas fa-phone"></i>
+      <span>ติดต่อ</span>
     </div>
   </div>
 
