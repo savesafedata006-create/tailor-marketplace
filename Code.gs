@@ -21,6 +21,12 @@ function doGet(e) {
     ss.getSheetByName("STOCK").appendRow(["STK-001", "ผ้า", "ผ้าไหม", "50", "เมตร", "500", "10", new Date()]);
   }
 
+  // สร้าง Sheet สำหรับบันทึก Log ถ้ายังไม่มี
+  if (!ss.getSheetByName("LOGS")) {
+    const logSheet = ss.insertSheet("LOGS");
+    logSheet.appendRow(["timestamp", "user_id", "username", "action", "details", "status"]);
+  }
+
   const response = {
     jobs: getSheetData(ss, "JOBS"),
     stock: getSheetData(ss, "STOCK"),
@@ -33,11 +39,14 @@ function doGet(e) {
 
 function getSheetData(ss, sheetName) {
   const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return [];
   const values = sheet.getDataRange().getValues();
   const headers = values[0];
   return values.slice(1).map(row => {
     let obj = {};
     headers.forEach((header, index) => {
+      // Security: ป้องกันการส่งรหัสผ่านไปยัง Client-side
+      if (header.toLowerCase() === 'password') return;
       let value = row[index];
       // จัดการรูปแบบวันที่ให้เป็น ISO String เพื่อให้ Frontend ใช้งานง่าย
       if (value instanceof Date) value = value.toISOString();
@@ -66,7 +75,7 @@ function doPost(e) {
       content.budget,
       "pending",
       "", // tailor_name
-      content.member_id || "GUEST",
+      content.user_id || "GUEST",
       new Date()
     ]);
 
@@ -147,6 +156,52 @@ function doPost(e) {
     return createResponse({ status: "success" });
   }
 
+  // 3. ลงทะเบียนสมาชิกใหม่
+  if (content.action === "register") {
+    const userSheet = ss.getSheetByName("USERS");
+    const userData = userSheet.getDataRange().getValues();
+    const username = content.username;
+
+    // ตรวจสอบว่ามีชื่อผู้ใช้นี้หรือยัง
+    for (let i = 1; i < userData.length; i++) {
+      if (userData[i][1] === username) {
+        return createResponse({ status: "error", message: "ชื่อผู้ใช้งานนี้ถูกใช้ไปแล้ว" });
+      }
+    }
+
+    const userId = "U-" + Utilities.getUuid().slice(0, 8).toUpperCase();
+    userSheet.appendRow([
+      userId,
+      username,
+      content.password,
+      "customer",
+      content.full_name,
+      content.phone
+    ]);
+
+    // แจ้งเตือน LINE Notify เมื่อมีสมาชิกใหม่
+    const configSheet = ss.getSheetByName("CONFIG");
+    if (configSheet) {
+      const configData = configSheet.getDataRange().getValues();
+      let lineToken = "";
+      for (let i = 1; i < configData.length; i++) {
+        if (configData[i][0] === "line_token") {
+          lineToken = configData[i][1].toString();
+          break;
+        }
+      }
+      if (lineToken && lineToken.trim() !== "") {
+        const msg = `\n👤 มีสมาชิกใหม่ลงทะเบียน!\n🆔 User ID: ${userId}\n📛 ชื่อ: ${content.full_name}\n📧 Username: ${username}\n📞 โทร: ${content.phone}\n📅 วันที่: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`;
+        sendLineNotify(msg, lineToken);
+      }
+    }
+
+    return createResponse({ 
+      status: "success", 
+      user: { user_id: userId, username: username, role: "customer", full_name: content.full_name } 
+    });
+  }
+
   // 3. ระบบ Login รวม (Boss, Tailor, Customer)
   if (content.action === "login") {
     const userSheet = ss.getSheetByName("USERS");
@@ -206,6 +261,49 @@ function doPost(e) {
       }
     }
     return createResponse({ status: "success" });
+  }
+
+  // 5. ระบบกู้คืนรหัสผ่าน (Reset Password)
+  if (content.action === "reset_password") {
+    const userSheet = ss.getSheetByName("USERS");
+    const userData = userSheet.getDataRange().getValues();
+    const username = content.username;
+    const phone = content.phone;
+    const newPassword = content.new_password;
+
+    for (let i = 1; i < userData.length; i++) {
+      if (userData[i][1] === username && userData[i][5].toString() === phone.toString()) {
+        userSheet.getRange(i + 1, 3).setValue(newPassword);
+        logEvent(ss, userData[i][0], username, "RESET_PASSWORD", "เปลี่ยนรหัสผ่านสำเร็จ", "success");
+        return createResponse({ status: "success" });
+      }
+    }
+    logEvent(ss, "N/A", username, "RESET_PASSWORD", "พยายามเปลี่ยนรหัสผ่านแต่เบอร์โทรไม่ถูกต้อง", "failure");
+    return createResponse({ status: "error", message: "ข้อมูลไม่ถูกต้อง (ชื่อผู้ใช้หรือเบอร์โทรศัพท์ไม่ตรงกัน)" });
+  }
+
+  // 6. อัปเดตสิทธิ์ผู้ใช้งาน (Update User Role)
+  if (content.action === "update_role") {
+    const userSheet = ss.getSheetByName("USERS");
+    const userData = userSheet.getDataRange().getValues();
+    const userId = content.user_id;
+    const newRole = content.role;
+    
+    for (let i = 1; i < userData.length; i++) {
+      if (userData[i][0].toString() === userId.toString()) {
+        userSheet.getRange(i + 1, 4).setValue(newRole); // Column 4 คือ role
+        logEvent(ss, content.admin_id, content.admin_name, "UPDATE_ROLE", "เปลี่ยนสิทธิ์ผู้ใช้ " + userData[i][1] + " เป็น " + newRole, "success");
+        break;
+      }
+    }
+    return createResponse({ status: "success" });
+  }
+}
+
+function logEvent(ss, userId, username, action, details, status) {
+  const logSheet = ss.getSheetByName("LOGS");
+  if (logSheet) {
+    logSheet.appendRow([new Date(), userId, username, action, details, status]);
   }
 }
 

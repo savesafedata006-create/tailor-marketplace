@@ -157,6 +157,7 @@ input:focus, textarea:focus {
 }
 
 .tab-btn {
+  position: relative;
   padding: 10px;
   border: none;
   background: transparent;
@@ -171,6 +172,24 @@ input:focus, textarea:focus {
   background: white;
   color: var(--primary);
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.badge-notify {
+  position: absolute;
+  top: -5px;
+  right: -2px;
+  background-color: var(--warning);
+  color: white;
+  font-size: 10px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  font-weight: bold;
+  border: 2px solid white;
 }
 
 /* Status Badges */
@@ -221,6 +240,49 @@ tr.low-stock-row {
 .dash-card p {
   font-size: 18px;
   margin-top: 5px;
+}
+
+/* How it works styles */
+.how-it-works {
+  margin-bottom: 30px;
+  padding: 10px 0;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.step-item {
+  background: var(--card);
+  padding: 15px;
+  border-radius: 18px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+  border: 1px solid #edf2f7;
+}
+
+.step-num {
+  width: 28px;
+  height: 28px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.step-item p {
+  font-size: 12px;
+  margin: 0;
+  line-height: 1.4;
+  color: var(--text-main);
 }
 
 /* Bottom Nav */
@@ -329,3 +391,71 @@ tr.low-stock-row {
   color: var(--warning);
   border-color: var(--warning);
 }
+
+/* Modal & Receipt */
+.modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 20px;
+}
+
+.receipt-content {
+  background: white;
+  padding: 30px;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.receipt-header i { font-size: 50px; color: var(--success); margin-bottom: 15px; }
+.receipt-header h2 { color: var(--primary); margin: 10px 0; }
+.receipt-body { text-align: left; border-top: 1px dashed #ccc; padding-top: 15px; margin-top: 15px; }
+.receipt-body p { margin: 8px 0; font-size: 15px; }
+
+.btn-secondary {
+  background: #e2e8f0;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 10px;
+}
+
+/* Boss Hub Styles */
+.boss-nav-hub {
+  background: white;
+  padding: 12px 20px;
+  border-radius: 15px;
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 15px rgba(67, 97, 238, 0.1);
+  border: 1px solid rgba(67, 97, 238, 0.2);
+}
+
+.hub-link {
+  text-decoration: none;
+  color: var(--primary);
+  font-weight: 500;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hub-label {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.hub-divider { width: 1px; height: 20px; background: #e2e8f0; margin: 0 15px; }

@@ -1,6 +1,6 @@
 // เชื่อมต่อกับ Google Sheets: https://docs.google.com/spreadsheets/d/1p2EFyCT75y_u9VKmeGIhodDWXZqGEPA3tzXWmPibdbk/edit
 // แทนที่ค่าด้านล่างนี้ด้วย Web App URL ที่ได้จากขั้นตอนการ Deploy Google Apps Script
-const SCRIPT_URL = "YOUR_DEPLOYED_WEB_APP_URL";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyHLnvQmRFTx6Qc9PYFcVFLj6ACZ_j6UX-Zci5iqwTtUaDQ618xsEMpo-7Qddc8bGSbg/exec"; // เปลี่ยนเป็น URL ของคุณหลัง Deploy
 
 let allPendingJobs = []; // เก็บข้อมูลงานทั้งหมดเพื่อใช้ในการค้นหา
 let currentViewData = { jobs: [], stock: [] };
@@ -16,7 +16,7 @@ async function sendData() {
     customer_line: document.getElementById("customer_line").value,
     job_detail: document.getElementById("job_detail").value,
     budget: document.getElementById("budget").value,
-    member_id: document.getElementById("member_id").value
+    user_id: sessionStorage.getItem("userId") || "GUEST"
   };
 
   if (!data.customer_name || !data.customer_phone || !data.job_detail) {
@@ -68,6 +68,7 @@ async function loginBoss() {
     if (result.status === "success") {
       sessionStorage.setItem("userRole", result.user.role);
       sessionStorage.setItem("userName", result.user.full_name);
+      sessionStorage.setItem("userId", result.user.user_id);
       checkAuth();
     } else {
       alert(result.message || "Login ไม่สำเร็จ");
@@ -80,24 +81,197 @@ async function loginBoss() {
   }
 }
 
+function toggleAuth(type) {
+  document.getElementById('login-form').style.display = type === 'login' ? 'flex' : 'none';
+  document.getElementById('register-form').style.display = type === 'register' ? 'flex' : 'none';
+  document.getElementById('forgot-form').style.display = type === 'forgot' ? 'flex' : 'none';
+}
+
+async function registerCustomer() {
+  const data = {
+    action: "register",
+    username: document.getElementById('reg-username').value,
+    password: document.getElementById('reg-password').value,
+    full_name: document.getElementById('reg-fullname').value,
+    phone: document.getElementById('reg-phone').value
+  };
+
+  if (!data.username || !data.password || !data.full_name) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+    const result = await response.json();
+
+    if (result.status === "success") {
+      alert("ลงทะเบียนสำเร็จ!");
+      sessionStorage.setItem("userRole", result.user.role);
+      sessionStorage.setItem("userName", result.user.full_name);
+      sessionStorage.setItem("userId", result.user.user_id);
+      checkCustomerAuth();
+    } else {
+      alert(result.message);
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาด"); }
+}
+
+async function loginCustomer() {
+  const data = {
+    action: "login",
+    username: document.getElementById('login-username').value,
+    password: document.getElementById('login-password').value
+  };
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+    const result = await response.json();
+
+    if (result.status === "success" && result.user.role === 'customer') {
+      sessionStorage.setItem("userRole", result.user.role);
+      sessionStorage.setItem("userName", result.user.full_name);
+      sessionStorage.setItem("userId", result.user.user_id);
+      checkCustomerAuth();
+    } else {
+      alert("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาด"); }
+}
+
+function logoutCustomer() {
+  sessionStorage.clear();
+  location.reload();
+}
+
+function checkCustomerAuth() {
+  const role = sessionStorage.getItem("userRole");
+  const name = sessionStorage.getItem("userName");
+  const authView = document.getElementById("auth-view");
+  const customerView = document.getElementById("customer-view");
+  const profileHeader = document.getElementById("user-profile-header");
+  const bossReturn = document.getElementById("boss-return-link");
+
+  if ((role === 'customer' || role === 'boss') && customerView) {
+    authView.style.display = "none";
+    customerView.style.display = "block";
+    
+    if (role === 'boss' && bossReturn) {
+      bossReturn.style.display = "block";
+    } else {
+      profileHeader.style.display = "block";
+    }
+    document.getElementById("display-user-name").innerText = "สวัสดี, " + name;
+    
+    // Autofill phone if available
+    // (Optional: fetch user data to get phone)
+  }
+}
+
+function switchCustomerTab(type) {
+  document.getElementById('order-new-section').style.display = type === 'order' ? 'block' : 'none';
+  document.getElementById('order-history-section').style.display = type === 'history' ? 'block' : 'none';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + type).classList.add('active');
+  if (type === 'history') loadCustomerJobs();
+}
+
+function toggleTailorForgot(isForgot) {
+  document.getElementById('tailor-login-fields').style.display = isForgot ? 'none' : 'block';
+  document.getElementById('tailor-forgot-fields').style.display = isForgot ? 'block' : 'none';
+}
+
+async function handleResetPassword(type) {
+  const prefix = type === 'customer' ? 'forgot-' : 't-forgot-';
+  const data = {
+    action: "reset_password",
+    username: document.getElementById(prefix + 'username').value,
+    phone: document.getElementById(prefix + 'phone').value,
+    new_password: document.getElementById(prefix + 'new-pass').value
+  };
+
+  if (!data.username || !data.phone || !data.new_password) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+    const result = await response.json();
+
+    if (result.status === "success") {
+      alert("เปลี่ยนรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่");
+      if (type === 'customer') toggleAuth('login');
+      else toggleTailorForgot(false);
+    } else {
+      alert(result.message);
+    }
+  } catch (e) {
+    alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+  }
+}
+
 function checkAuth() {
   const role = sessionStorage.getItem("userRole");
+  const loginOverlay = document.getElementById("login-overlay");
+  const mainContent = document.getElementById("main-content");
+  const tailorView = document.getElementById("tailor-view");
+
   if (role) {
-    document.getElementById("login-overlay").style.display = "none";
-    document.getElementById("main-content").style.display = "block";
+    if (loginOverlay) loginOverlay.style.display = "none";
+    if (mainContent) mainContent.style.display = "block";
+    if (tailorView) tailorView.style.display = "block";
     
     // ควบคุมการแสดงผลตามสิทธิ์
     const bossOnlyElements = document.querySelectorAll('.boss-only');
     if (role !== 'boss') {
       bossOnlyElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
     } else {
-      // Boss เห็นเมนูสต๊อก
       const stockBtn = document.getElementById('tab-stock');
       if(stockBtn) stockBtn.style.display = 'block';
+      const usersBtn = document.getElementById('tab-users');
+      if(usersBtn) usersBtn.style.display = 'block';
+    }
+    loadJobs('pending');
+  } else {
+    if (loginOverlay) loginOverlay.style.display = "flex";
+    if (mainContent) mainContent.style.display = "none";
+  }
+}
+
+async function loadCustomerJobs() {
+  const container = document.getElementById("my-jobs-list");
+  const userId = sessionStorage.getItem("userId");
+  if (!container || !userId) return;
+  
+  container.innerHTML = "<p>กำลังโหลดข้อมูลงานของคุณ...</p>";
+
+  try {
+    const response = await fetch(SCRIPT_URL);
+    const data = await response.json();
+    // ตรวจสอบว่ามีข้อมูล jobs หรือไม่ก่อนทำการ filter
+    const myJobs = (data.jobs || []).filter(j => j.user_id === userId);
+
+    if (myJobs.length === 0) {
+      container.innerHTML = "<p class='no-data'>คุณยังไม่มีประวัติการจ้างงาน</p>";
+      return;
     }
 
-    loadJobs('pending');
-  }
+    container.innerHTML = myJobs.map(job => `
+      <div class="job-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span class="status-badge ${job.status}">${job.status}</span>
+          <small>ID: ${job.rn}</small>
+        </div>
+        <h3>${job.job_detail}</h3>
+        <p><strong>งบประมาณ:</strong> ฿${Number(job.budget).toLocaleString()}</p>
+        <p><strong>ช่างผู้ดูแล:</strong> ${job.tailor_name || 'รอดำเนินการ'}</p>
+      </div>
+    `).join('');
+  } catch (e) { container.innerHTML = "<p>ไม่สามารถโหลดข้อมูลได้</p>"; }
 }
 
 async function loadJobs(filterType = 'pending', forceRefresh = false) {
@@ -130,6 +304,7 @@ async function loadJobs(filterType = 'pending', forceRefresh = false) {
     displayJobsData(data.jobs, filterType);
     renderStock(data.stock);
     renderStockChart(data.stock);
+    renderUsers(data.users);
   } catch (error) {
     container.innerHTML = "<p>ไม่สามารถโหลดข้อมูลได้</p>";
   }
@@ -139,16 +314,27 @@ function switchTab(type) {
   const jobList = document.getElementById('job-list');
   const searchContainer = document.querySelector('.search-container');
   const perfSections = document.querySelectorAll('.performance-section');
+  const userSection = document.getElementById('user-management-section');
   
   if (type === 'stock') {
     jobList.style.display = 'none';
     searchContainer.style.display = 'none';
-    perfSections.forEach(el => el.style.display = 'block');
+    perfSections.forEach(el => {
+      if (el.id !== 'user-management-section') el.style.display = 'block';
+    });
+    if (userSection) userSection.style.display = 'none';
     loadJobs('pending'); // ดึงข้อมูลเพื่อให้สต๊อกเป็นปัจจุบัน
+  } else if (type === 'users') {
+    jobList.style.display = 'none';
+    searchContainer.style.display = 'none';
+    perfSections.forEach(el => el.style.display = 'none');
+    if (userSection) userSection.style.display = 'block';
+    renderUsers(currentViewData.users);
   } else {
     jobList.style.display = 'grid';
     searchContainer.style.display = 'block';
     perfSections.forEach(el => el.style.display = 'none');
+    if (userSection) userSection.style.display = 'none';
     loadJobs(type);
   }
 }
@@ -294,17 +480,25 @@ function updateDashboard(jobs) {
   const finishedJobs = jobs.filter(j => j.status === 'finished');
   const totalIncome = finishedJobs.reduce((sum, j) => sum + (Number(j.budget) || 0), 0);
   
+  const pendingCount = jobs.filter(j => j.status === 'pending').length;
+
   // อัปเดตตัวเลขบน Dashboard
   const setVal = (id, val) => {
     const el = document.getElementById(id);
     if (el) el.innerText = val;
   };
 
+  const badge = document.getElementById('pending-badge');
+  if (badge) {
+    badge.innerText = pendingCount;
+    badge.style.display = pendingCount > 0 ? 'flex' : 'none';
+  }
+
   setVal('today-count', todayJobs.length);
   setVal('today-income', `฿${todayIncome.toLocaleString()}`);
   setVal('today-finished', todayFinished.length);
   setVal('total-income', `฿${totalIncome.toLocaleString()}`);
-  setVal('count-pending', jobs.filter(j => j.status === 'pending').length);
+  setVal('count-pending', pendingCount);
   setVal('count-active', jobs.filter(j => j.status === 'accepted' || j.status === 'sewing').length);
   setVal('count-finished', finishedJobs.length);
 
@@ -432,7 +626,7 @@ async function updateStatus(id, newStatus) {
 }
 
 function logoutBoss() {
-  sessionStorage.removeItem("isBossLoggedIn");
+  sessionStorage.clear(); // ล้างข้อมูล Session ทั้งหมด (role, Name, ID) เพื่อความปลอดภัย
   location.reload();
 }
 
