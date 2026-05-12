@@ -169,6 +169,16 @@
             <input type="number" id="m-length" placeholder="0">
           </div>
         </div>
+        <div class="input-item" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label>รอบสะโพก (นิ้ว)</label>
+            <input type="number" id="m-hips" placeholder="0">
+          </div>
+          <div>
+            <label>ความกว้างไหล่ (นิ้ว)</label>
+            <input type="number" id="m-shoulder" placeholder="0">
+          </div>
+        </div>
         <div class="input-item">
           <label>รายละเอียดที่ต้องการ</label>
           <textarea id="job_detail" rows="4" placeholder="เช่น ตัดกางเกงสแล็คสีดำ 2 ตัว"></textarea>
@@ -206,11 +216,56 @@
           <h2><i class="fas fa-user"></i> โปรไฟล์ของฉัน</h2>
         </div>
         <div class="form-group">
-          <input type="text" id="profile-name" placeholder="ชื่อ-นามสกุล">
-          <input type="tel" id="profile-phone" placeholder="เบอร์โทรศัพท์">
-          <input type="text" id="profile-line" placeholder="Line ID">
-          <button class="btn-primary" onclick="updateProfile()">อัปเดตโปรไฟล์</button>
+          <div class="input-item">
+            <label>ชื่อ-นามสกุล</label>
+            <input type="text" id="profile-name" placeholder="ชื่อ-นามสกุล">
+          </div>
+          <div class="input-item">
+            <label>เบอร์โทรศัพท์</label>
+            <input type="tel" id="profile-phone" placeholder="08x-xxx-xxxx">
+          </div>
+          <div class="input-item">
+            <label>Line ID</label>
+            <input type="text" id="profile-line" placeholder="@lineid">
+          </div>
+          <button class="btn-primary" onclick="updateProfile()"><i class="fas fa-save"></i> บันทึกข้อมูลติดต่อ</button>
         </div>
+
+        <!-- สัดส่วนร่างกาย (WI-S03 action 15: update_measurements) -->
+        <div class="form-group" style="margin-top: 15px;">
+          <div class="section-header" style="padding: 0; margin-bottom: 12px;">
+            <h3 style="font-size: 15px;"><i class="fas fa-ruler-combined"></i> สัดส่วนร่างกายของฉัน</h3>
+            <p style="font-size: 12px;">บันทึกครั้งเดียว — ระบบจะเติมอัตโนมัติเวลาสั่งงาน</p>
+          </div>
+          <div class="input-item" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div>
+              <label>รอบอก (นิ้ว)</label>
+              <input type="number" id="p-m-chest" placeholder="0">
+            </div>
+            <div>
+              <label>รอบเอว (นิ้ว)</label>
+              <input type="number" id="p-m-waist" placeholder="0">
+            </div>
+            <div>
+              <label>ความยาว (นิ้ว)</label>
+              <input type="number" id="p-m-length" placeholder="0">
+            </div>
+          </div>
+          <div class="input-item" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label>รอบสะโพก (นิ้ว)</label>
+              <input type="number" id="p-m-hips" placeholder="0">
+            </div>
+            <div>
+              <label>ความกว้างไหล่ (นิ้ว)</label>
+              <input type="number" id="p-m-shoulder" placeholder="0">
+            </div>
+          </div>
+          <button class="btn-primary" style="background: var(--success);" onclick="updateMeasurements()">
+            <i class="fas fa-ruler"></i> บันทึกสัดส่วนของฉัน
+          </button>
+        </div>
+
       </div>
     </section>
 

@@ -47,10 +47,11 @@ function doGet(e) {
   }
 
   const response = {
-    jobs: getSheetData(ss, "JOBS"), // ดึงข้อมูลจาก Sheet ที่อาจถูกสร้างขึ้นใหม่
-    stock: getSheetData(ss, "STOCK"), // ดึงข้อมูลจาก Sheet ที่อาจถูกสร้างขึ้นใหม่
-    users: getSheetData(ss, "USERS"), // ดึงข้อมูลจาก Sheet ที่อาจถูกสร้างขึ้นใหม่
-    payroll: getSheetData(ss, "PAYROLL") // ดึงข้อมูลจาก Sheet ที่อาจถูกสร้างขึ้นใหม่
+    jobs: getSheetData(ss, "JOBS"),
+    stock: getSheetData(ss, "STOCK"),
+    users: getSheetData(ss, "USERS"),
+    payroll: getSheetData(ss, "PAYROLL"),
+    measurements: getSheetData(ss, "MEASUREMENTS")
   };
 
   return ContentService.createTextOutput(JSON.stringify(response))

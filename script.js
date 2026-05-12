@@ -36,7 +36,9 @@ async function sendData() {
     measurements: JSON.stringify({
       chest: document.getElementById("m-chest")?.value || "",
       waist: document.getElementById("m-waist")?.value || "",
-      length: document.getElementById("m-length")?.value || ""
+      hips: document.getElementById("m-hips")?.value || "",
+      length: document.getElementById("m-length")?.value || "",
+      shoulder: document.getElementById("m-shoulder")?.value || ""
     })
   };
 
@@ -236,14 +238,22 @@ function checkCustomerAuth() {
     if (customerView) { customerView.classList.remove('hidden'); customerView.classList.add('fade-in'); }
     if (portalAccessContainer) portalAccessContainer.classList.add('hidden');
     if (profileHeader) profileHeader.classList.remove('hidden');
-    
-    // ถ้าเป็น Admin (boss) ให้แสดงปุ่มกลับหน้าจัดการ
+
     if (role === 'boss' && bossReturn) {
       bossReturn.classList.remove('hidden');
     }
 
     if (document.getElementById("display-user-name")) {
       document.getElementById("display-user-name").innerHTML = `<i class="fas fa-user-circle"></i> ${name}`;
+    }
+
+    // Auto-fill สัดส่วนร่างกายในฟอร์มสั่งงาน จาก MEASUREMENTS sheet
+    const userId = sessionStorage.getItem("userId") || localStorage.getItem("userId");
+    if (userId) {
+      fetch(SCRIPT_URL).then(r => r.json()).then(data => {
+        const m = (data.measurements || []).find(x => x.user_id === userId);
+        if (m) autoFillOrderMeasurements(m);
+      }).catch(() => {});
     }
   } else {
     if (authView) authView.classList.remove('hidden');
@@ -252,20 +262,25 @@ function checkCustomerAuth() {
 }
 
 function switchCustomerTab(type) {
-  const newOrder = document.getElementById('order-new-section');
-  const history = document.getElementById('order-history-section');
-  
-  if (type === 'order') {
-    newOrder.classList.remove('hidden'); newOrder.classList.add('fade-in');
-    history.classList.add('hidden');
-  } else {
-    newOrder.classList.add('hidden');
-    history.classList.remove('hidden'); history.classList.add('fade-in');
-  }
+  const sections = {
+    order: document.getElementById('order-new-section'),
+    history: document.getElementById('order-history-section'),
+    notifications: document.getElementById('order-notifications-section'),
+    profile: document.getElementById('order-profile-section')
+  };
+
+  Object.values(sections).forEach(el => { if (el) { el.style.display = 'none'; el.classList.remove('fade-in'); } });
+
+  const active = sections[type];
+  if (active) { active.style.display = 'block'; active.classList.add('fade-in'); }
 
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-' + type).classList.add('active');
+  const tabEl = document.getElementById('tab-' + type);
+  if (tabEl) tabEl.classList.add('active');
+
   if (type === 'history') loadCustomerJobs();
+  else if (type === 'notifications') loadNotifications();
+  else if (type === 'profile') loadProfile();
 }
 
 function toggleTailorForgot(isForgot) {
@@ -367,10 +382,11 @@ async function loadCustomerJobs() {
       <div class="job-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
           <span class="status-badge ${job.status}">
-            ${job.status === 'pending' ? 'รอรับงาน' : 
-              job.status === 'accepted' ? 'รับงานแล้ว' : 
-              job.status === 'sewing' ? 'กำลังเย็บ' : 
-              job.status === 'finished' ? 'เสร็จแล้ว' : 'ยกเลิกแล้ว'}
+            ${job.status === 'pending' ? 'รอรับงาน' :
+              job.status === 'accepted' ? 'รับงานแล้ว' :
+              job.status === 'sewing' ? 'กำลังเย็บ' :
+              job.status === 'finished' ? 'เสร็จแล้ว' :
+              job.status === 'rejected' ? 'ถูกปฏิเสธ' : 'ยกเลิกแล้ว'}
           </span>
           <small>ID: ${job.rn}</small>
         </div>
@@ -386,9 +402,9 @@ async function loadCustomerJobs() {
           </div>
         ` : ''}
 
-        ${job.status === 'pending' ? `
-          <button class="btn-logout" 
-                  style="width: 100%; margin-top: 10px; border-color: var(--warning); color: var(--warning);" 
+        ${(job.status === 'pending' || job.status === 'accepted') ? `
+          <button class="btn-logout"
+                  style="width: 100%; margin-top: 10px; border-color: var(--warning); color: var(--warning);"
                   onclick="cancelOrder('${job.id}')">
             <i class="fas fa-times-circle"></i> ยกเลิกการจ้างงาน
           </button>
@@ -712,12 +728,22 @@ function renderStock(stock) {
     return;
   }
 
+  const totalValue = displayData.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unit_price) || 0), 0);
+
   container.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+      <span style="font-size:13px; color:var(--text-sub);">มูลค่าคลังรวม: <strong style="color:var(--primary);">฿${totalValue.toLocaleString()}</strong></span>
+      <button class="btn-primary" style="padding:8px 16px; font-size:13px;" onclick="showAddStockModal()">
+        <i class="fas fa-plus"></i> เพิ่มรายการ
+      </button>
+    </div>
     <table class="stats-table">
       <thead>
         <tr>
           <th>วัสดุ</th>
+          <th>หมวดหมู่</th>
           <th>คงเหลือ</th>
+          <th>ราคา/หน่วย</th>
           <th>สถานะ</th>
           <th>จัดการ</th>
         </tr>
@@ -727,12 +753,14 @@ function renderStock(stock) {
           const isLow = Number(item.quantity) <= Number(item.min_threshold);
           return `
           <tr class="${isLow ? 'low-stock-row' : ''}">
-            <td>${item.item_name}</td>
+            <td><strong>${item.item_name}</strong></td>
+            <td>${item.category || '-'}</td>
             <td>${item.quantity} ${item.unit}</td>
+            <td>฿${Number(item.unit_price || 0).toLocaleString()}</td>
             <td><span class="status-badge ${isLow ? 'low-stock' : 'normal'}">
-              ${isLow ? '<i class="fas fa-exclamation-triangle"></i> ของใกล้หมด' : '<i class="fas fa-check"></i> ปกติ'}
+              ${isLow ? '<i class="fas fa-exclamation-triangle"></i> ใกล้หมด' : '<i class="fas fa-check"></i> ปกติ'}
             </span></td>
-            <td><button onclick="updateStockQty('${item.item_id}', ${item.quantity})" class="btn-logout"><i class="fas fa-edit"></i></button></td>
+            <td><button onclick="updateStockQty('${item.item_id}', ${item.quantity})" class="btn-logout" title="แก้ไขจำนวน"><i class="fas fa-edit"></i></button></td>
           </tr>
           `;
         }).join('')}
@@ -952,26 +980,31 @@ function renderJobs(jobsToRender) { // Renamed parameter for clarity
   const endIndex = startIndex + JOBS_PER_PAGE;
   const paginatedJobs = jobsToRender.slice(startIndex, endIndex);
 
+  const statusLabelMap = { pending: 'รอรับงาน', accepted: 'รับงานแล้ว', sewing: 'กำลังเย็บ', finished: 'เสร็จสมบูรณ์', cancelled: 'ยกเลิกแล้ว', rejected: 'ถูกปฏิเสธ' };
+
   container.innerHTML = paginatedJobs.map(job => {
-    // แปลงข้อมูลสัดส่วนจาก JSON String เป็น Object
-    let m = { chest: '-', waist: '-', length: '-' };
+    let m = { chest: '-', waist: '-', hips: '-', length: '-', shoulder: '-' };
     try {
-      if (job.measurements) m = JSON.parse(job.measurements);
-    } catch (e) { console.error("Error parsing measurements", e); }
+      if (job.measurements) {
+        const parsed = JSON.parse(job.measurements);
+        m = { ...m, ...parsed };
+      }
+    } catch (e) { /* measurements อาจเป็น string เก่า */ }
 
     return `
     <div class="job-card fade-in">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <span class="status-badge ${job.status}">${job.status}</span>
+        <span class="status-badge ${job.status}">${statusLabelMap[job.status] || job.status}</span>
         <small>${job.created_at ? job.created_at.split('T')[0] : ''}</small>
       </div>
       <h3>${job.job_detail}</h3>
 
-      <!-- ส่วนแสดงสัดส่วนสำหรับช่าง (Technical Specs) -->
       <div class="measurement-spec">
         <div class="spec-item"><strong>อก</strong> <span class="spec-val">${m.chest || '-'}</span></div>
         <div class="spec-item"><strong>เอว</strong> <span class="spec-val">${m.waist || '-'}</span></div>
+        <div class="spec-item"><strong>สะโพก</strong> <span class="spec-val">${m.hips || '-'}</span></div>
         <div class="spec-item"><strong>ยาว</strong> <span class="spec-val">${m.length || '-'}</span></div>
+        <div class="spec-item"><strong>ไหล่</strong> <span class="spec-val">${m.shoulder || '-'}</span></div>
       </div>
 
       <p><strong>ผู้โพสต์:</strong> ${job.customer_name}</p>
@@ -986,20 +1019,33 @@ function renderJobs(jobsToRender) { // Renamed parameter for clarity
 }
 
 function renderActionButtons(job) {
+  const isBoss = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole")) === 'boss';
+  const costBtn = isBoss ? `
+    <button class="btn-logout" style="width:100%; margin-top:5px; border-color:var(--secondary); color:var(--secondary);" onclick="updateAdditionalCost('${job.id}', ${job.budget})">
+      <i class="fas fa-plus-circle"></i> เพิ่มค่าใช้จ่าย (Boss)
+    </button>` : '';
+
   if (job.status === 'pending') {
     return `
       <div style="display:flex; gap:10px;">
         <button class="btn-primary" style="flex:2" onclick="updateStatus('${job.id}', 'accepted')"><i class="fas fa-check"></i> รับงาน</button>
         <button class="btn-logout" style="flex:1" onclick="updateStatus('${job.id}', 'rejected')"><i class="fas fa-times"></i> ปฏิเสธ</button>
       </div>
+      ${costBtn}
     `;
   } else if (job.status === 'accepted') {
-    return `<button class="btn-primary" style="background:var(--success)" onclick="updateStatus('${job.id}', 'sewing')"><i class="fas fa-cut"></i> เริ่มขั้นตอนตัดเย็บ</button>`;
+    return `
+      <button class="btn-primary" style="background:var(--success); width:100%;" onclick="updateStatus('${job.id}', 'sewing')"><i class="fas fa-cut"></i> เริ่มขั้นตอนตัดเย็บ</button>
+      ${costBtn}
+    `;
   } else if (job.status === 'sewing') {
     return `
-      <button class="btn-primary" style="background:var(--secondary); margin-bottom:5px;" onclick="uploadProgressPhoto('${job.id}')"><i class="fas fa-camera"></i> อัปเดตรูปความคืบหน้า</button>
-      <button class="btn-primary" style="background:var(--primary-dark)" onclick="updateStatus('${job.id}', 'finished')"><i class="fas fa-check-double"></i> แจ้งงานเสร็จสมบูรณ์</button>
+      <button class="btn-primary" style="background:var(--secondary); margin-bottom:5px; width:100%;" onclick="uploadProgressPhoto('${job.id}')"><i class="fas fa-camera"></i> อัปเดตรูปความคืบหน้า</button>
+      <button class="btn-primary" style="background:var(--primary-dark); width:100%;" onclick="updateStatus('${job.id}', 'finished')"><i class="fas fa-check-double"></i> แจ้งงานเสร็จสมบูรณ์</button>
+      ${costBtn}
     `;
+  } else if (job.status === 'finished') {
+    return costBtn;
   }
   return '';
 }
@@ -1199,6 +1245,148 @@ async function confirmAndRateJob(id) {
   } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
 }
 
+// === แจ้งเตือนลูกค้า: ดึงงานล่าสุดมาแสดงเป็น timeline ===
+async function loadNotifications() {
+  const container = document.getElementById("notifications-list");
+  const userId = sessionStorage.getItem("userId");
+  if (!container || !userId) return;
+  container.innerHTML = "<p>กำลังโหลด...</p>";
+
+  try {
+    const response = await fetch(SCRIPT_URL);
+    const data = await response.json();
+    const myJobs = (data.jobs || []).filter(j => j.user_id === userId);
+
+    if (myJobs.length === 0) {
+      container.innerHTML = "<p class='no-data'>ยังไม่มีการแจ้งเตือน</p>";
+      return;
+    }
+
+    const statusLabel = { pending: 'รอรับงาน', accepted: 'รับงานแล้ว', sewing: 'กำลังเย็บ', finished: 'เสร็จสมบูรณ์', cancelled: 'ยกเลิกแล้ว', rejected: 'ถูกปฏิเสธ' };
+    const statusIcon  = { pending: 'fa-clock', accepted: 'fa-check', sewing: 'fa-cut', finished: 'fa-check-double', cancelled: 'fa-times-circle', rejected: 'fa-ban' };
+
+    container.innerHTML = myJobs.slice().reverse().map(job => `
+      <div class="job-card fade-in" style="border-left: 4px solid var(--primary);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span class="status-badge ${job.status}">
+            <i class="fas ${statusIcon[job.status] || 'fa-info-circle'}"></i>
+            ${statusLabel[job.status] || job.status}
+          </span>
+          <small style="color:var(--text-sub);">${job.rn}</small>
+        </div>
+        <p style="margin:4px 0; font-size:14px;"><strong>${job.job_detail}</strong></p>
+        ${job.tailor_name ? `<p style="margin:4px 0; font-size:13px; color:var(--text-sub);">ช่าง: ${job.tailor_name}</p>` : ''}
+        ${(job.status === 'cancelled' || job.status === 'rejected') && job.cancellation_reason
+          ? `<p style="margin:4px 0; font-size:12px; color:var(--warning);"><i class="fas fa-exclamation-circle"></i> ${job.cancellation_reason}</p>` : ''}
+        <small style="color:var(--text-sub);">${job.created_at ? job.created_at.split('T')[0] : ''}</small>
+      </div>
+    `).join('');
+  } catch (e) {
+    container.innerHTML = "<p class='no-data'>ไม่สามารถโหลดข้อมูลได้</p>";
+  }
+}
+
+// === โหลดข้อมูลโปรไฟล์จาก server + สัดส่วนร่างกาย (WI-S03 action 12+15) ===
+async function loadProfile() {
+  const userId = sessionStorage.getItem("userId") || localStorage.getItem("userId");
+  const cachedName = sessionStorage.getItem("userName") || localStorage.getItem("userName") || "";
+
+  const nameEl = document.getElementById("profile-name");
+  if (nameEl) nameEl.value = cachedName;
+
+  try {
+    const res = await fetch(SCRIPT_URL);
+    const data = await res.json();
+
+    // Pre-fill ข้อมูลติดต่อจาก USERS sheet
+    const user = (data.users || []).find(u => u.user_id === userId);
+    if (user) {
+      const setField = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+      setField("profile-name",  user.full_name);
+      setField("profile-phone", user.phone);
+      setField("profile-line",  user.line_id || "");
+    }
+
+    // Pre-fill สัดส่วนร่างกายจาก MEASUREMENTS sheet
+    const mData = (data.measurements || []).find(m => m.user_id === userId);
+    if (mData) {
+      const setM = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+      setM("p-m-chest",   mData.chest);
+      setM("p-m-waist",   mData.waist);
+      setM("p-m-hips",    mData.hips);
+      setM("p-m-length",  mData.length);
+      setM("p-m-shoulder",mData.shoulder);
+    }
+  } catch (e) {
+    console.warn("loadProfile: ไม่สามารถดึงข้อมูลจาก server ได้");
+  }
+}
+
+// === บันทึกสัดส่วนร่างกาย (WI-S03 action 15: update_measurements) ===
+async function updateMeasurements() {
+  const userId = sessionStorage.getItem("userId") || localStorage.getItem("userId");
+  if (!userId) return alert("กรุณาเข้าสู่ระบบก่อน");
+
+  const chest    = document.getElementById("p-m-chest")?.value || "";
+  const waist    = document.getElementById("p-m-waist")?.value || "";
+  const hips     = document.getElementById("p-m-hips")?.value || "";
+  const length   = document.getElementById("p-m-length")?.value || "";
+  const shoulder = document.getElementById("p-m-shoulder")?.value || "";
+
+  if (!chest && !waist && !length) return alert("กรุณากรอกสัดส่วนอย่างน้อย 1 ช่อง");
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "update_measurements", user_id: userId, chest, waist, hips, length, shoulder })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      alert("บันทึกสัดส่วนสำเร็จ! ระบบจะเติมอัตโนมัติในฟอร์มสั่งงาน");
+      autoFillOrderMeasurements({ chest, waist, hips, length, shoulder });
+    } else {
+      alert(res.message || "เกิดข้อผิดพลาด");
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
+// เติมสัดส่วนจาก profile ลงในฟอร์มสั่งงานอัตโนมัติ
+function autoFillOrderMeasurements(m) {
+  const setField = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  setField("m-chest",   m.chest);
+  setField("m-waist",   m.waist);
+  setField("m-hips",    m.hips);
+  setField("m-length",  m.length);
+  setField("m-shoulder",m.shoulder);
+}
+
+// === บันทึกโปรไฟล์ลูกค้า (WI-C, action=update_profile) ===
+async function updateProfile() {
+  const userId = sessionStorage.getItem("userId") || localStorage.getItem("userId");
+  const fullName = document.getElementById("profile-name")?.value;
+  const phone    = document.getElementById("profile-phone")?.value;
+  const line     = document.getElementById("profile-line")?.value;
+
+  if (!fullName) return alert("กรุณากรอกชื่อ-นามสกุล");
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "update_profile", user_id: userId, full_name: fullName, phone: phone, line: line })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      sessionStorage.setItem("userName", fullName);
+      localStorage.setItem("userName", fullName);
+      const displayEl = document.getElementById("display-user-name");
+      if (displayEl) displayEl.innerHTML = `<i class="fas fa-user-circle"></i> ${fullName}`;
+      alert("อัปเดตโปรไฟล์สำเร็จ");
+    } else {
+      alert(res.message || "เกิดข้อผิดพลาด");
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
 // ระบบกดค้าง 3 วินาทีสำหรับปุ่มลับ
 let portalTimer;
 function initPortalLongPress() {
@@ -1354,21 +1542,59 @@ async function changeUserRole(userId, newRole) {
 // === สถิติส่วนตัวช่าง ===
 function renderTailorStats(jobs, payroll) {
   const myName = sessionStorage.getItem("userName");
-  const myId = sessionStorage.getItem("userId");
+  const myId   = sessionStorage.getItem("userId");
   const myJobs = jobs.filter(j => j.tailor_name === myName && j.status === 'finished');
-  const totalWage = myJobs.reduce((sum, j) => sum + (Number(j.budget) || 0), 0) * 0.4;
 
-  const myPayroll = (payroll || []).filter(p => p.user_id === myId);
-  const paidAmount = myPayroll.filter(p => p.status === 'approved').reduce((sum, p) => sum + (Number(p.net_amount) || 0), 0);
-  const pendingAmount = myPayroll.filter(p => p.status === 'pending').reduce((sum, p) => sum + (Number(p.net_amount) || 0), 0);
-  const available = Math.max(0, totalWage - paidAmount - pendingAmount);
+  // คำนวณรายได้
+  const totalWage    = myJobs.reduce((sum, j) => sum + (Number(j.budget) || 0), 0) * 0.4;
+  const myPayroll    = (payroll || []).filter(p => p.user_id === myId);
+  const paidAmount   = myPayroll.filter(p => p.status === 'approved').reduce((sum, p) => sum + (Number(p.net_amount) || 0), 0);
+  const pendingAmt   = myPayroll.filter(p => p.status === 'pending').reduce((sum, p) => sum + (Number(p.net_amount) || 0), 0);
+  const available    = Math.max(0, totalWage - paidAmount - pendingAmt);
 
-  const availEl = document.getElementById('my-available-income');
-  if (availEl) availEl.innerText = `฿${available.toLocaleString()}`;
+  // คำนวณ Rating เฉลี่ย (WI-T06: ช่างเห็นคะแนนในแท็บรายได้ของฉัน)
+  const ratedJobs    = myJobs.filter(j => j.rating && Number(j.rating) > 0);
+  const avgRating    = ratedJobs.length > 0
+    ? (ratedJobs.reduce((sum, j) => sum + Number(j.rating), 0) / ratedJobs.length).toFixed(1)
+    : null;
 
-  const countEl = document.getElementById('my-finished-count');
-  if (countEl) countEl.innerText = myJobs.length;
+  // อัปเดตการ์ด
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+  setVal('my-available-income', `฿${available.toLocaleString()}`);
+  setVal('my-finished-count',   myJobs.length);
+  setVal('my-total-wage',       `฿${totalWage.toLocaleString()}`);
+  setVal('my-avg-rating',       avgRating ? `${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} (${avgRating})` : 'ยังไม่มี');
 
+  // ประวัติงานที่ทำเสร็จ (WI-T05/T06)
+  const jobHistEl = document.getElementById('my-jobs-history');
+  if (jobHistEl) {
+    if (myJobs.length === 0) {
+      jobHistEl.innerHTML = "<p class='no-data'>ยังไม่มีงานที่ทำเสร็จ</p>";
+    } else {
+      jobHistEl.innerHTML = `
+        <table class="stats-table">
+          <thead>
+            <tr><th>เลขที่</th><th>รายละเอียด</th><th>ประเภท</th><th>งบ</th><th>ค่าแรง (40%)</th><th>Rating</th><th>วันที่</th></tr>
+          </thead>
+          <tbody>
+            ${myJobs.slice().reverse().map(j => `
+              <tr>
+                <td><small>${j.rn}</small></td>
+                <td>${j.job_detail?.substring(0, 30)}${j.job_detail?.length > 30 ? '...' : ''}</td>
+                <td>${j.job_category || '-'}</td>
+                <td>฿${Number(j.budget).toLocaleString()}</td>
+                <td class="text-success">฿${(Number(j.budget) * 0.4).toLocaleString()}</td>
+                <td>${j.rating ? '★'.repeat(Number(j.rating)) + '☆'.repeat(5 - Number(j.rating)) : '<span style="color:var(--text-sub)">รอ</span>'}</td>
+                <td><small>${j.created_at ? j.created_at.split('T')[0] : ''}</small></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+  }
+
+  // ประวัติการเบิกเงิน
   const histEl = document.getElementById('my-payroll-history');
   if (!histEl) return;
 
@@ -1386,7 +1612,7 @@ function renderTailorStats(jobs, payroll) {
         ${myPayroll.map(p => `
           <tr>
             <td><small>${p.pay_id}</small></td>
-            <td>${p.cycle}</td>
+            <td>วันที่ ${p.cycle}</td>
             <td>฿${Number(p.gross_amount).toLocaleString()}</td>
             <td class="text-warning">฿${Number(p.tax_3).toLocaleString()}</td>
             <td class="text-primary"><strong>฿${Number(p.net_amount).toLocaleString()}</strong></td>
@@ -1488,6 +1714,85 @@ async function uploadProgressPhoto(id) {
     if (res.status === "success") {
       alert("อัปเดตรูปภาพสำเร็จ");
       loadJobs('active', true);
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
+// === Boss: เพิ่มรายการสต๊อกใหม่ (WI-B02, action=add_stock) ===
+function showAddStockModal() {
+  const existing = document.getElementById('add-stock-modal');
+  if (existing) { existing.style.display = 'flex'; return; }
+
+  const modal = document.createElement('div');
+  modal.id = 'add-stock-modal';
+  modal.className = 'modal';
+  modal.style.display = 'flex';
+  modal.innerHTML = `
+    <div class="receipt-content" style="max-width:400px; width:100%;">
+      <div class="section-header">
+        <h2><i class="fas fa-plus-circle"></i> เพิ่มรายการสต๊อกใหม่</h2>
+      </div>
+      <div class="form-group">
+        <input type="text"   id="ns-name"       placeholder="ชื่อวัสดุ (เช่น ผ้าวูล)" required>
+        <input type="text"   id="ns-category"   placeholder="หมวดหมู่ (เช่น ผ้า, ด้าย, กระดุม)">
+        <input type="number" id="ns-qty"        placeholder="จำนวนเริ่มต้น" min="0">
+        <input type="text"   id="ns-unit"       placeholder="หน่วย (เช่น เมตร, เม็ด)">
+        <input type="number" id="ns-price"      placeholder="ราคาต่อหน่วย (บาท)" min="0">
+        <input type="number" id="ns-min"        placeholder="ขั้นต่ำแจ้งเตือน" min="0">
+        <button class="btn-primary" onclick="addNewStock()"><i class="fas fa-save"></i> บันทึก</button>
+        <button class="btn-secondary" onclick="document.getElementById('add-stock-modal').style.display='none'">ยกเลิก</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+async function addNewStock() {
+  const name      = document.getElementById('ns-name')?.value?.trim();
+  const category  = document.getElementById('ns-category')?.value?.trim() || 'ทั่วไป';
+  const qty       = document.getElementById('ns-qty')?.value || '0';
+  const unit      = document.getElementById('ns-unit')?.value?.trim() || 'ชิ้น';
+  const price     = document.getElementById('ns-price')?.value || '0';
+  const minThresh = document.getElementById('ns-min')?.value || '5';
+
+  if (!name) return alert("กรุณาระบุชื่อวัสดุ");
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "add_stock", category, item_name: name, quantity: qty, unit, unit_price: price, min_threshold: minThresh })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      alert("เพิ่มรายการสต๊อกสำเร็จ! (ID: " + (res.item_id || '-') + ")");
+      document.getElementById('add-stock-modal').style.display = 'none';
+      loadJobs('pending', true);
+    } else {
+      alert(res.message || "เกิดข้อผิดพลาด");
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
+// === Boss: เพิ่มค่าใช้จ่ายงาน (WI-B08, action=update_additional_cost) ===
+async function updateAdditionalCost(id, currentBudget) {
+  const extra = prompt(`งบประมาณปัจจุบัน: ฿${Number(currentBudget).toLocaleString()}\nระบุจำนวนเงินที่เพิ่มเติม (บาท):`);
+  if (extra === null) return;
+  const extraNum = Number(extra);
+  if (isNaN(extraNum) || extraNum <= 0) return alert("กรุณาระบุจำนวนเงินที่ถูกต้อง (> 0)");
+
+  if (!confirm(`ยืนยันเพิ่มค่าใช้จ่าย ฿${extraNum.toLocaleString()} → งบใหม่ = ฿${(Number(currentBudget) + extraNum).toLocaleString()}?`)) return;
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "update_additional_cost", id: id, additional_cost: extraNum })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      alert("อัปเดตค่าใช้จ่ายสำเร็จ");
+      loadJobs('active', true);
+    } else {
+      alert(res.message || "เกิดข้อผิดพลาด");
     }
   } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
 }
