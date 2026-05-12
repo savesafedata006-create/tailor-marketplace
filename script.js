@@ -171,24 +171,24 @@ function logoutCustomer() {
 }
 
 function checkCustomerAuth() {
-  const role = sessionStorage.getItem("userRole") || localStorage.getItem("userRole");
-  const name = sessionStorage.getItem("userName") || localStorage.getItem("userName");
+  // ปิดระบบ Login สำหรับ Demo: บังคับเป็น Boss เพื่อให้เข้าถึงได้ทุกส่วน
+  const role = "boss";
+  const name = "ลูกค้า (Demo Mode)";
+  const userId = "DEMO-CUSTOMER-001";
+
   const authView = document.getElementById("auth-view");
   const customerView = document.getElementById("customer-view");
   const profileHeader = document.getElementById("user-profile-header");
   const bossReturn = document.getElementById("boss-return-link");
   const portalAccessContainer = document.getElementById("portal-access-container");
 
-  if ((role === 'customer' || role === 'boss') && customerView) {
+  if (customerView) {
     authView.style.display = "none";
     customerView.style.display = "block";
     
-    // Sync session if coming from local
-    if (!sessionStorage.getItem("userRole")) {
-      sessionStorage.setItem("userRole", localStorage.getItem("userRole"));
-      sessionStorage.setItem("userName", localStorage.getItem("userName"));
-      sessionStorage.setItem("userId", localStorage.getItem("userId"));
-    }
+    sessionStorage.setItem("userRole", role);
+    sessionStorage.setItem("userName", name);
+    sessionStorage.setItem("userId", userId);
 
     if (portalAccessContainer) portalAccessContainer.style.display = "none"; // ซ่อนปุ่มลับเมื่อ Login แล้ว
 
@@ -276,9 +276,6 @@ function checkAuth() {
       if(usersBtn) usersBtn.style.display = 'block';
     }
     loadJobs('pending');
-  } else {
-    if (loginOverlay) loginOverlay.style.display = "flex";
-    if (mainContent) mainContent.style.display = "none";
   }
 }
 
@@ -951,3 +948,8 @@ function togglePortalDropdown() {
 // เรียกใช้งานระบบกดค้างเมื่อโหลดหน้าเว็บ
 document.addEventListener('DOMContentLoaded', initPortalLongPress);
 document.addEventListener('DOMContentLoaded', initThemeToggle);
+
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    checkCustomerAuth();
+});
