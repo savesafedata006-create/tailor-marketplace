@@ -3,8 +3,10 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyHLnvQmRFTx6Qc9PYFcVFLj6ACZ_j6UX-Zci5iqwTtUaDQ618xsEMpo-7Qddc8bGSbg/exec"; // เปลี่ยนเป็น URL ของคุณหลัง Deploy
 
 let allPendingJobs = []; // เก็บข้อมูลงานทั้งหมดเพื่อใช้ในการค้นหา
-let currentViewData = { jobs: [], stock: [] };
+let currentViewData = { jobs: [], stock: [], payroll: [] };
 let stockChartInstance = null; // เก็บ Instance ของกราฟเพื่อทำลายก่อนวาดใหม่
+let revenueChartInstance = null; // เก็บ Instance ของกราฟรายได้
+let categoryChartInstance = null; // เก็บ Instance ของกราฟประเภทชุด
 
 async function sendData() {
   const btn = document.querySelector("#customer-view .btn-primary");
@@ -15,6 +17,7 @@ async function sendData() {
     customer_phone: document.getElementById("customer_phone").value,
     customer_line: document.getElementById("customer_line").value,
     job_detail: document.getElementById("job_detail").value,
+    job_category: document.getElementById("job_category").value,
     budget: document.getElementById("budget").value,
     user_id: sessionStorage.getItem("userId") || "GUEST"
   };
@@ -338,7 +341,11 @@ async function loadJobs(filterType = 'pending', forceRefresh = false) {
     displayJobsData(data.jobs, filterType);
     renderStock(data.stock);
     renderStockChart(data.stock);
+    renderRevenueChart(data.jobs);
+    renderCategoryChart(data.jobs);
     renderUsers(data.users);
+    renderTailorStats(data.jobs, data.payroll);
+    renderPayrollManager(data.payroll);
   } catch (error) {
     container.innerHTML = "<p>ไม่สามารถโหลดข้อมูลได้</p>";
   }
@@ -416,6 +423,121 @@ function renderStockChart(stock) {
         y: {
           beginAtZero: true,
           ticks: { callback: (value) => '฿' + value.toLocaleString() }
+        }
+      }
+    }
+  });
+}
+
+function renderRevenueChart(jobs) {
+  const ctx = document.getElementById('revenueChart')?.getContext('2d');
+  if (!ctx) return;
+
+  // กรองเฉพาะงานที่เสร็จแล้ว
+  const finishedJobs = jobs.filter(j => j.status === 'finished');
+  
+  // จัดกลุ่มรายได้ตามเดือน
+  const monthlyData = finishedJobs.reduce((acc, job) => {
+    const date = new Date(job.created_at);
+    // สร้าง Key รูปแบบ YYYY-MM สำหรับการเรียงลำดับ
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    acc[monthKey] = (acc[monthKey] || 0) + (Number(job.budget) || 0);
+    return acc;
+  }, {});
+
+  // เรียงลำดับเดือนจากอดีตไปปัจจุบัน
+  const sortedMonths = Object.keys(monthlyData).sort();
+  const labels = sortedMonths.map(m => {
+    const [year, month] = m.split('-');
+    return new Date(year, month - 1).toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
+  });
+  const dataValues = sortedMonths.map(m => monthlyData[m]);
+
+  if (revenueChartInstance) {
+    revenueChartInstance.destroy();
+  }
+
+  revenueChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'รายได้รวม (บาท)',
+        data: dataValues,
+        borderColor: '#4361ee',
+        backgroundColor: 'rgba(67, 97, 238, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4, // ทำให้เส้นมีความโค้งมนสวยงาม
+        pointRadius: 4,
+        pointBackgroundColor: '#4361ee'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: (value) => '฿' + value.toLocaleString() }
+        }
+      }
+    }
+  });
+}
+
+function renderCategoryChart(jobs) {
+  const ctx = document.getElementById('categoryChart')?.getContext('2d');
+  if (!ctx) return;
+
+  // กรองเฉพาะงานที่เสร็จแล้ว
+  const finishedJobs = jobs.filter(j => j.status === 'finished');
+
+  // สรุปรายได้แยกตามประเภท
+  const categoryData = finishedJobs.reduce((acc, job) => {
+    const cat = job.job_category || 'อื่นๆ';
+    acc[cat] = (acc[cat] || 0) + (Number(job.budget) || 0);
+    return acc;
+  }, {});
+
+  const labels = Object.keys(categoryData);
+  const dataValues = Object.values(categoryData);
+  
+  // กำหนดสีประจำประเภท
+  const bgColors = ['#4361ee', '#4cc9f0', '#4895ef', '#f72585', '#7209b7'];
+
+  if (categoryChartInstance) {
+    categoryChartInstance.destroy();
+  }
+
+  categoryChartInstance = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: dataValues,
+        backgroundColor: bgColors,
+        hoverOffset: 10
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { font: { family: 'Kanit' } }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              let label = context.label || '';
+              let value = context.parsed || 0;
+              let total = context.dataset.data.reduce((a, b) => a + b, 0);
+              let percentage = ((value / total) * 100).toFixed(1);
+              return `${label}: ฿${value.toLocaleString()} (${percentage}%)`;
+            }
+          }
         }
       }
     }
@@ -623,9 +745,8 @@ async function updateStatus(id, newStatus) {
   let payload = { action: "update_status", id: id, status: newStatus };
 
   if (newStatus === 'accepted') {
-    const tailorName = prompt("กรุณาระบุชื่อช่างที่รับงาน:");
-    if (!tailorName) return; // ยกเลิกถ้าไม่ใส่ชื่อ
-    payload.tailor_name = tailorName;
+    // ใช้ชื่อจาก Session อัตโนมัติเพื่อป้องกันพนักงานพิมพ์ชื่อผิด
+    payload.tailor_name = sessionStorage.getItem("userName");
 
     // ถามเรื่องการหักสต๊อก
     const useStock = confirm("ต้องการหักสต๊อกวัสดุสำหรับงานนี้ทันทีหรือไม่?");
@@ -731,3 +852,6 @@ async function handleChangePassword() {
     }
   } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
 }
+
+// เรียกใช้งานระบบกดค้างเมื่อโหลดหน้าเว็บ
+document.addEventListener('DOMContentLoaded', initPortalLongPress);

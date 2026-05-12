@@ -31,8 +31,8 @@
         <a href="tailor.html" class="btn-logout" style="text-decoration:none; background:var(--primary); color:white; border:none;"><i class="fas fa-arrow-left"></i> กลับหน้าจัดการ</a>
       </div>
       <div class="portal-access-container" id="portal-access-container">
-        <button class="portal-access-btn" title="เข้าสู่ระบบพนักงาน/BOSS" onclick="togglePortalDropdown()">
-          <i class="fas fa-cog"></i> <!-- ไอคอนรูปเฟืองเล็กๆ -->
+        <button class="portal-access-btn" title="System Info">
+          <i class="fas fa-key"></i> <!-- เปลี่ยนเป็นไอคอนกุญแจลับ -->
         </button>
         <div class="portal-dropdown" id="portal-dropdown">
           <a href="tailor.html" class="dropdown-item">Admin Login</a>
@@ -125,6 +125,16 @@
         <div class="input-item">
           <label>Line ID (ถ้ามี)</label>
           <input type="text" id="customer_line" placeholder="@lineid">
+        </div>
+        <div class="input-item">
+          <label>ประเภทชุด</label>
+          <select id="job_category">
+            <option value="สูท">สูท (Suit)</option>
+            <option value="กางเกง">กางเกง (Pants)</option>
+            <option value="กระโปรง">กระโปรง (Skirt)</option>
+            <option value="เดรส">ชุดเดรส (Dress)</option>
+            <option value="อื่นๆ">อื่นๆ (Other)</option>
+          </select>
         </div>
         <div class="input-item">
           <label>รายละเอียดที่ต้องการ</label>

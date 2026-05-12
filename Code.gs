@@ -2,12 +2,12 @@ function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("JOBS") || ss.insertSheet("JOBS");
   
-  // สร้างหัวตารางถ้ายังไม่มีข้อมูล (รองรับฟิลด์ใหม่ๆ)
+  // 1. สร้างหัวตาราง JOBS
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow(["id", "rn", "customer_name", "customer_phone", "customer_line", "job_detail", "budget", "status", "tailor_name", "user_id", "created_at"]);
+    sheet.appendRow(["id", "rn", "customer_name", "customer_phone", "customer_line", "job_detail", "job_category", "budget", "status", "tailor_name", "user_id", "created_at"]);
   }
   
-  // สร้าง Sheet สำหรับผู้ใช้งาน (Users) ถ้ายังไม่มี
+  // 2. สร้างหัวตาราง USERS และ User เริ่มต้น
   if (!ss.getSheetByName("USERS")) {
     const userSheet = ss.insertSheet("USERS");
     userSheet.appendRow(["user_id", "username", "password", "role", "full_name", "phone"]);
@@ -15,22 +15,36 @@ function doGet(e) {
     userSheet.appendRow([Utilities.getUuid(), "admin", "1234", "boss", "เจ้าของร้าน", "0000000000"]);
   }
   
-  // สร้าง Sheet สำหรับสต๊อกสินค้าถ้ายังไม่มี
+  // 3. สร้างหัวตาราง STOCK และข้อมูลตัวอย่าง
   if (!ss.getSheetByName("STOCK")) {
     ss.insertSheet("STOCK").appendRow(["item_id", "category", "item_name", "quantity", "unit", "unit_price", "min_threshold", "last_updated"]);
     ss.getSheetByName("STOCK").appendRow(["STK-001", "ผ้า", "ผ้าไหม", "50", "เมตร", "500", "10", new Date()]);
   }
 
-  // สร้าง Sheet สำหรับบันทึก Log ถ้ายังไม่มี
+  // 4. สร้างหัวตาราง LOGS
   if (!ss.getSheetByName("LOGS")) {
     const logSheet = ss.insertSheet("LOGS");
     logSheet.appendRow(["timestamp", "user_id", "username", "action", "details", "status"]);
   }
 
+  // 5. สร้างหัวตาราง PAYROLL
+  if (!ss.getSheetByName("PAYROLL")) {
+    const paySheet = ss.insertSheet("PAYROLL");
+    paySheet.appendRow(["pay_id", "user_id", "username", "gross_amount", "tax_3", "net_amount", "cycle", "status", "timestamp"]);
+  }
+
+  // 6. สร้างหัวตาราง CONFIG และ Token เริ่มต้น
+  if (!ss.getSheetByName("CONFIG")) {
+    const configSheet = ss.insertSheet("CONFIG");
+    configSheet.appendRow(["key", "value"]);
+    configSheet.appendRow(["line_token", ""]); // ใส่ Token LINE Notify ที่นี่
+  }
+
   const response = {
     jobs: getSheetData(ss, "JOBS"),
     stock: getSheetData(ss, "STOCK"),
-    users: getSheetData(ss, "USERS") // ส่งข้อมูลผู้ใช้ (ควรระวังในการใช้งานจริงให้ส่งเฉพาะที่จำเป็น)
+    users: getSheetData(ss, "USERS"),
+    payroll: getSheetData(ss, "PAYROLL")
   };
 
   return ContentService.createTextOutput(JSON.stringify(response))
@@ -72,6 +86,7 @@ function doPost(e) {
       content.customer_phone,
       content.customer_line,
       content.job_detail,
+      content.job_category,
       content.budget,
       "pending",
       "", // tailor_name
@@ -108,9 +123,9 @@ function doPost(e) {
     
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] == jobId) {
-        // คอลัมน์ Status (H=8), Tailor Name (I=9)
-        sheet.getRange(i + 1, 8).setValue(newStatus);
-        if (tailorName) sheet.getRange(i + 1, 9).setValue(tailorName);
+        // คอลัมน์ Status (I=9), Tailor Name (J=10)
+        sheet.getRange(i + 1, 9).setValue(newStatus);
+        if (tailorName) sheet.getRange(i + 1, 10).setValue(tailorName);
         break;
       }
     }
@@ -151,6 +166,40 @@ function doPost(e) {
           }
           break;
         }
+      }
+    }
+    return createResponse({ status: "success" });
+  }
+
+  // 5. ยื่นคำขอเบิกเงิน (Request Payment)
+  if (content.action === "request_payment") {
+    const paySheet = ss.getSheetByName("PAYROLL");
+    const gross = Number(content.amount);
+    const tax = gross * 0.03; // ภาษีหัก ณ ที่จ่าย 3%
+    const net = gross - tax;
+    
+    paySheet.appendRow([
+      "PAY-" + Utilities.getUuid().slice(0, 8).toUpperCase(),
+      content.user_id,
+      content.username,
+      gross,
+      tax,
+      net,
+      content.cycle,
+      "pending",
+      new Date()
+    ]);
+    return createResponse({ status: "success" });
+  }
+
+  // 6. อนุมัติการเบิกเงิน (Approve Payment)
+  if (content.action === "approve_payment") {
+    const paySheet = ss.getSheetByName("PAYROLL");
+    const data = paySheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === content.pay_id) {
+        paySheet.getRange(i + 1, 8).setValue("approved");
+        break;
       }
     }
     return createResponse({ status: "success" });
@@ -275,6 +324,24 @@ function doPost(e) {
       if (userData[i][1] === username && userData[i][5].toString() === phone.toString()) {
         userSheet.getRange(i + 1, 3).setValue(newPassword);
         logEvent(ss, userData[i][0], username, "RESET_PASSWORD", "เปลี่ยนรหัสผ่านสำเร็จ", "success");
+
+        // แจ้งเตือน LINE Notify เมื่อกู้คืนรหัสผ่านสำเร็จ
+        const configSheet = ss.getSheetByName("CONFIG");
+        if (configSheet) {
+          const configData = configSheet.getDataRange().getValues();
+          let lineToken = "";
+          for (let k = 1; k < configData.length; k++) {
+            if (configData[k][0] === "line_token") {
+              lineToken = configData[k][1].toString();
+              break;
+            }
+          }
+          if (lineToken && lineToken.trim() !== "") {
+            const msg = `\n🔐 แจ้งเตือน: มีการกู้คืนรหัสผ่านสำเร็จ\n👤 ผู้ใช้งาน: ${username}\n📛 ชื่อ: ${userData[i][4]}\n📅 วันที่: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`;
+            sendLineNotify(msg, lineToken);
+          }
+        }
+
         return createResponse({ status: "success" });
       }
     }
@@ -312,6 +379,24 @@ function doPost(e) {
         if (userData[i][2].toString() === oldPassword.toString()) {
           userSheet.getRange(i + 1, 3).setValue(newPassword);
           logEvent(ss, userId, userData[i][1], "CHANGE_PASSWORD", "เปลี่ยนรหัสผ่านสำเร็จ", "success");
+
+          // แจ้งเตือน LINE Notify เมื่อเปลี่ยนรหัสผ่านสำเร็จ
+          const configSheet = ss.getSheetByName("CONFIG");
+          if (configSheet) {
+            const configData = configSheet.getDataRange().getValues();
+            let lineToken = "";
+            for (let k = 1; k < configData.length; k++) {
+              if (configData[k][0] === "line_token") {
+                lineToken = configData[k][1].toString();
+                break;
+              }
+            }
+            if (lineToken && lineToken.trim() !== "") {
+              const msg = `\n🔐 แจ้งเตือน: มีการเปลี่ยนรหัสผ่านสำเร็จ\n👤 ผู้ใช้งาน: ${userData[i][1]}\n📛 ชื่อ: ${userData[i][4]}\n📅 วันที่: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`;
+              sendLineNotify(msg, lineToken);
+            }
+          }
+
           return createResponse({ status: "success" });
         } else {
           return createResponse({ status: "error", message: "รหัสผ่านเดิมไม่ถูกต้อง" });
