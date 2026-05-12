@@ -4,12 +4,22 @@ const SCRIPT_URL = "ใส่_URL_ที่ได้จาก_Apps_Script_ตร
 
 let allPendingJobs = []; // เก็บข้อมูลงานทั้งหมดเพื่อใช้ในการค้นหา
 let currentViewData = { jobs: [], stock: [], payroll: [] };
+let currentFilteredJobs = []; // สำหรับจัดการการค้นหาและ Pagination
 let stockChartInstance = null; // เก็บ Instance ของกราฟเพื่อทำลายก่อนวาดใหม่
 
 const JOBS_PER_PAGE = 10; // จำนวนงานที่แสดงต่อหน้า
 let currentPage = 1;
 let revenueChartInstance = null; // เก็บ Instance ของกราฟรายได้
 let categoryChartInstance = null; // เก็บ Instance ของกราฟประเภทชุด
+
+// ฟังก์ชัน Debounce เพื่อลดภาระเครื่องเวลาพิมพ์ค้นหา
+function debounce(func, timeout = 300) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { func.apply(this, args); }, timeout);
+  };
+}
 
 async function sendData() {
   const btn = document.querySelector("#customer-view .btn-primary");
@@ -171,36 +181,29 @@ function logoutCustomer() {
 }
 
 function checkCustomerAuth() {
-  // ปิดระบบ Login สำหรับ Demo: บังคับเป็น Boss เพื่อให้เข้าถึงได้ทุกส่วน
-  const role = "boss";
+  // ปิดระบบ Login สำหรับ Demo: บังคับเป็น Customer เพื่อให้เข้าถึงหน้าสั่งงานได้
+  const role = "customer"; // Changed to customer
   const name = "ลูกค้า (Demo Mode)";
   const userId = "DEMO-CUSTOMER-001";
 
   const authView = document.getElementById("auth-view");
   const customerView = document.getElementById("customer-view");
   const profileHeader = document.getElementById("user-profile-header");
-  const bossReturn = document.getElementById("boss-return-link");
   const portalAccessContainer = document.getElementById("portal-access-container");
+  const bossReturn = document.getElementById("boss-return-link"); // Get the element
 
-  if (customerView) {
-    authView.style.display = "none";
-    customerView.style.display = "block";
-    
-    sessionStorage.setItem("userRole", role);
-    sessionStorage.setItem("userName", name);
-    sessionStorage.setItem("userId", userId);
+  if (authView) authView.style.display = "none";
+  if (customerView) customerView.style.display = "block";
+  if (portalAccessContainer) portalAccessContainer.style.display = "none"; // ซ่อนปุ่มลับเมื่อ Login แล้ว
+  if (profileHeader) profileHeader.style.display = "block"; // Show profile header for customer
+  if (bossReturn) bossReturn.style.display = "none"; // Ensure boss return link is hidden on customer page
 
-    if (portalAccessContainer) portalAccessContainer.style.display = "none"; // ซ่อนปุ่มลับเมื่อ Login แล้ว
+  sessionStorage.setItem("userRole", role);
+  sessionStorage.setItem("userName", name);
+  sessionStorage.setItem("userId", userId);
 
-    if (role === 'boss' && bossReturn) {
-      bossReturn.style.display = "block";
-    } else {
-      profileHeader.style.display = "block";
-    }
+  if (document.getElementById("display-user-name")) {
     document.getElementById("display-user-name").innerText = "สวัสดี, " + name;
-    
-    // Autofill phone if available
-    // (Optional: fetch user data to get phone)
   }
 }
 
@@ -248,35 +251,31 @@ async function handleResetPassword(type) {
 }
 
 function checkAuth() {
-  const role = sessionStorage.getItem("userRole") || localStorage.getItem("userRole");
+  // ปิดระบบ Login สำหรับ Demo: บังคับเข้าหน้า Admin ทันที
+  const role = "boss";
+  const name = "เจ้าของร้าน (Demo)";
+  const userId = "ADMIN-001";
+
   const loginOverlay = document.getElementById("login-overlay");
   const mainContent = document.getElementById("main-content");
   const tailorView = document.getElementById("tailor-view");
 
-  if (role) {
-    // Sync session if coming from local
-    if (!sessionStorage.getItem("userRole")) {
-      sessionStorage.setItem("userRole", localStorage.getItem("userRole"));
-      sessionStorage.setItem("userName", localStorage.getItem("userName"));
-      sessionStorage.setItem("userId", localStorage.getItem("userId"));
-    }
+  if (loginOverlay) loginOverlay.style.display = "none";
+  if (mainContent) mainContent.style.display = "block";
+  if (tailorView) tailorView.style.display = "block";
+  
+  sessionStorage.setItem("userRole", role);
+  sessionStorage.setItem("userName", name);
+  sessionStorage.setItem("userId", userId);
 
-    if (loginOverlay) loginOverlay.style.display = "none";
-    if (mainContent) mainContent.style.display = "block";
-    if (tailorView) tailorView.style.display = "block";
-    
-    // ควบคุมการแสดงผลตามสิทธิ์
-    const bossOnlyElements = document.querySelectorAll('.boss-only');
-    if (role !== 'boss') {
-      bossOnlyElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
-    } else {
-      const stockBtn = document.getElementById('tab-stock');
-      if(stockBtn) stockBtn.style.display = 'block';
-      const usersBtn = document.getElementById('tab-users');
-      if(usersBtn) usersBtn.style.display = 'block';
-    }
-    loadJobs('pending');
-  }
+  // ควบคุมการแสดงผลตามสิทธิ์ (role is hardcoded to 'boss' here, so boss-only elements will show)
+  document.querySelectorAll('.boss-only').forEach(el => el.style.setProperty('display', 'block'));
+  document.getElementById('tab-stock')?.style.display = 'block';
+  document.getElementById('tab-users')?.style.display = 'block';
+  document.getElementById('tab-payroll')?.style.display = 'block'; // Ensure payroll tab is visible
+  document.getElementById('tab-pl-report')?.style.display = 'block'; // Ensure P/L report tab is visible
+
+  loadJobs('pending');
 }
 
 async function loadCustomerJobs() {
@@ -337,8 +336,19 @@ async function loadJobs(filterType = 'pending', forceRefresh = false) {
     const response = await fetch(SCRIPT_URL);
     const data = await response.json();
     currentViewData = data;
+    
+    // กรองข้อมูลตาม Tab ที่เลือก
+    if (filterType === 'pending') {
+      allPendingJobs = data.jobs.filter(j => j.status === 'pending');
+    } else {
+      allPendingJobs = data.jobs.filter(j => j.status === 'accepted' || j.status === 'sewing');
+    }
 
-    displayJobsData(data.jobs, filterType);
+    currentFilteredJobs = allPendingJobs;
+    currentPage = 1;
+
+    updateDashboard(data.jobs);
+    renderJobs(currentFilteredJobs);
     renderStock(data.stock);
     renderStockChart(data.stock);
     renderRevenueChart(data.jobs);
@@ -703,34 +713,6 @@ function renderJobs(jobsToRender) { // Renamed parameter for clarity
 
   container.innerHTML = paginatedJobs.map(job => `
     <div class="job-card">
-      <h3>${job.job_detail}</h3>
-      <p><strong>ผู้โพสต์:</strong> ${job.customer_name}</p>
-      <p><strong>ติดต่อ:</strong> ${job.customer_phone || '-'}</p>
-      <p><strong>งบประมาณ:</strong> ฿${job.budget}</p>
-      ${renderActionButtons(job)}
-    </div>
-  `).join('');
-
-  renderPaginationControls(jobsToRender.length, totalPages);
-}
-
-function renderJobs(jobsToRender) { // Renamed parameter for clarity
-  const container = document.getElementById("job-list");
-  const paginationContainer = document.getElementById("pagination-controls");
-  
-  if (jobsToRender.length === 0) {
-    container.innerHTML = "<p class='no-data'>ไม่พบรายการงานที่ตรงกับการค้นหา</p>";
-    if (paginationContainer) paginationContainer.innerHTML = ""; // Clear pagination
-    return;
-  }
-
-  const totalPages = Math.ceil(jobsToRender.length / JOBS_PER_PAGE);
-  const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
-  const endIndex = startIndex + JOBS_PER_PAGE;
-  const paginatedJobs = jobsToRender.slice(startIndex, endIndex);
-
-  container.innerHTML = paginatedJobs.map(job => `
-    <div class="job-card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <span class="status-badge ${job.status}">${job.status}</span>
         <small>${job.created_at ? job.created_at.split('T')[0] : ''}</small>
@@ -766,6 +748,9 @@ function filterJobs() {
   currentPage = 1; // Reset to first page after filtering
   renderJobs(currentFilteredJobs);
 }
+
+// สร้างฟังก์ชัน Debounced สำหรับเรียกใช้ใน HTML
+const debouncedFilterJobs = debounce(() => filterJobs());
 
 // New pagination functions
 function renderPaginationControls(totalItems, totalPages) {
@@ -946,10 +931,3 @@ function togglePortalDropdown() {
 }
 
 // เรียกใช้งานระบบกดค้างเมื่อโหลดหน้าเว็บ
-document.addEventListener('DOMContentLoaded', initPortalLongPress);
-document.addEventListener('DOMContentLoaded', initThemeToggle);
-
-document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
-    checkCustomerAuth();
-});

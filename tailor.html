@@ -184,7 +184,7 @@
 
       <div class="search-container">
         <i class="fas fa-search"></i>
-        <input type="text" id="search-input" placeholder="ค้นหาชื่องานหรือลูกค้า..." oninput="filterJobs()">
+        <input type="text" id="search-input" placeholder="ค้นหาชื่องานหรือลูกค้า..." oninput="debouncedFilterJobs()">
       </div>
       
       <div class="tabs">
@@ -239,5 +239,10 @@
   </div>
 
   <script src="script.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuth(); // Only call admin auth for tailor.html
+    });
+  </script>
 </body>
 </html>

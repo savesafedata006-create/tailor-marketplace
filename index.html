@@ -194,5 +194,10 @@
   </div>
 
   <script src="script.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      checkCustomerAuth(); // Only call customer auth for index.html
+    });
+  </script>
 </body>
 </html>
