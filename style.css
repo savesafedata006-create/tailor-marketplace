@@ -1,6 +1,23 @@
 :root {
   --primary: #4361ee;
   --primary-light: #4895ef;
+  --primary-dark: #7209b7; /* Darker primary for dark mode */
+  --primary-dark-light: #f72585; /* Lighter dark primary */
+
+  --success: #10b981;
+  --warning: #f72585;
+  --secondary: #4cc9f0;
+
+  --bg: #f0f2f5;
+  --card: #ffffff;
+  --text-main: #2b2d42;
+  --text-sub: #8d99ae;
+}
+
+/* Dark Mode Variables */
+:root.dark-mode {
+  --primary: var(--primary-dark);
+  --primary-light: var(--primary-dark-light);
   --success: #10b981;
   --warning: #f72585;
   --secondary: #4cc9f0;
@@ -8,6 +25,11 @@
   --card: #ffffff;
   --text-main: #2b2d42;
   --text-sub: #8d99ae;
+
+  --bg: #1a202c; /* Dark background */
+  --card: #2d3748; /* Dark card background */
+  --text-main: #e2e8f0; /* Light text */
+  --text-sub: #a0aec0; /* Lighter sub-text */
 }
 
 body {
@@ -16,6 +38,7 @@ body {
   margin: 0 0 70px 0; /* Space for bottom nav */
   color: var(--text-main);
 }
+
 
 .container {
   max-width: 600px;
@@ -192,6 +215,10 @@ input:focus, textarea:focus {
   border: 2px solid white;
 }
 
+.badge-notify.dark-mode {
+  border: 2px solid var(--card); /* Adjust border for dark mode */
+}
+
 /* Status Badges */
 .status-badge {
   padding: 4px 10px;
@@ -208,6 +235,19 @@ input:focus, textarea:focus {
   border: 1px solid var(--warning);
 }
 
+.status-badge.low-stock.dark-mode {
+  background: #4a0e1e; /* Darker background for low stock in dark mode */
+  color: #f72585;
+  border-color: #f72585;
+}
+
+/* Highlight Row when stock is low */
+tr.low-stock-row {
+  background: #fee2e2;
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+
 .status-badge.normal {
   background: #dcfce7;
   color: var(--success);
@@ -217,6 +257,10 @@ input:focus, textarea:focus {
 /* Highlight Row when stock is low */
 tr.low-stock-row {
   background-color: #fff1f2 !important;
+}
+
+tr.low-stock-row.dark-mode {
+  background-color: #2d1010 !important; /* Darker background for low stock row in dark mode */
 }
 
 .dashboard-grid {
@@ -235,6 +279,10 @@ tr.low-stock-row {
   text-align: center;
   box-shadow: 0 4px 10px rgba(0,0,0,0.04);
   flex: 1;
+}
+
+.dash-card.dark-mode {
+  background: var(--card);
 }
 
 .dash-card p {
@@ -262,6 +310,10 @@ tr.low-stock-row {
   text-align: center;
   box-shadow: 0 4px 10px rgba(0,0,0,0.03);
   border: 1px solid #edf2f7;
+}
+
+.step-item.dark-mode {
+  background: var(--card);
 }
 
 .step-num {
@@ -301,6 +353,10 @@ tr.low-stock-row {
   z-index: 1000;
 }
 
+.bottom-nav.dark-mode {
+  background: var(--card);
+}
+
 .nav-item {
   display: flex;
   flex-direction: column;
@@ -311,7 +367,11 @@ tr.low-stock-row {
 }
 
 .nav-item i { font-size: 20px; margin-bottom: 4px; }
-.nav-item.active { color: var(--primary); }
+.nav-item.active { color: var(--primary); } /* Active color remains primary */
+.nav-item.dark-mode {
+  color: var(--text-sub); /* Default text color for dark mode */
+}
+.nav-item.active.dark-mode { color: var(--primary); } /* Active color remains primary */
 
 /* Login Screen Styles */
 .login-screen {
@@ -324,6 +384,10 @@ tr.low-stock-row {
   z-index: 2000;
 }
 
+.login-screen.dark-mode {
+  background: var(--bg);
+}
+
 .login-box {
   background: white;
   padding: 40px 30px;
@@ -332,6 +396,10 @@ tr.low-stock-row {
   text-align: center;
   max-width: 350px;
   width: 90%;
+}
+
+.login-box.dark-mode {
+  background: var(--card);
 }
 
 .login-box i { font-size: 40px; color: var(--primary); margin-bottom: 20px; }
@@ -356,6 +424,10 @@ tr.low-stock-row {
 .text-success { color: var(--success); font-weight: 600; }
 .text-primary { color: var(--primary); font-weight: 600; }
 
+.stats-table.dark-mode th { border-bottom: 2px solid var(--bg); }
+.stats-table.dark-mode td { border-bottom: 1px solid var(--bg); }
+
+
 .stock-filter {
   font-size: 13px;
   color: var(--text-sub);
@@ -367,6 +439,10 @@ tr.low-stock-row {
   padding: 6px 12px;
   border-radius: 20px;
   transition: 0.2s;
+}
+.stock-filter.dark-mode {
+  background: var(--bg);
+  color: var(--text-sub);
 }
 .stock-filter:hover { background: #e2e8f0; }
 
@@ -405,6 +481,10 @@ tr.low-stock-row {
   padding: 20px;
 }
 
+.modal.dark-mode {
+  background: rgba(0,0,0,0.7);
+}
+
 .receipt-content {
   background: white;
   padding: 30px;
@@ -413,6 +493,10 @@ tr.low-stock-row {
   max-width: 400px;
   text-align: center;
   margin-bottom: 20px;
+}
+
+.receipt-content.dark-mode {
+  background: var(--card);
 }
 
 .receipt-header i { font-size: 50px; color: var(--success); margin-bottom: 15px; }
@@ -428,6 +512,10 @@ tr.low-stock-row {
   cursor: pointer;
   font-family: inherit;
   margin-top: 10px;
+}
+
+.btn-secondary.dark-mode {
+  background: var(--bg);
 }
 
 /* Boss Hub Styles */

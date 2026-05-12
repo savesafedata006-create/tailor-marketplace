@@ -886,3 +886,4 @@ function togglePortalDropdown() {
 
 // เรียกใช้งานระบบกดค้างเมื่อโหลดหน้าเว็บ
 document.addEventListener('DOMContentLoaded', initPortalLongPress);
+document.addEventListener('DOMContentLoaded', initThemeToggle);
