@@ -3,48 +3,177 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>System Flow - Tailor Marketplace</title>
+  <title>วิธีใช้งาน - Tailor Marketplace</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="style.css">
   <style>
-    .sop-section { background: var(--card); padding: 25px; border-radius: 20px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-    .sop-header { border-bottom: 2px solid var(--bg); padding-bottom: 15px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
-    .sop-header i { font-size: 24px; color: var(--primary); }
-    .sop-header h3 { margin: 0; font-size: 20px; }
-    
-    .wi-step { background: var(--bg); padding: 20px; border-radius: 15px; margin-bottom: 15px; border-left: 4px solid var(--primary); }
-    .wi-step h4 { margin: 0 0 10px 0; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
-    .wi-step h4 span { font-size: 12px; background: var(--primary); color: white; padding: 2px 8px; border-radius: 10px; }
-    .wi-details { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 13px; margin-top: 10px; }
+    .sop-section { background: var(--card); padding: 25px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+    .sop-header { border-bottom: 2px solid var(--bg); padding-bottom: 15px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .sop-header i { font-size: 22px; color: var(--primary); }
+    .sop-header h3 { margin: 0; font-size: 18px; }
+
+    .wi-step { background: var(--bg); padding: 18px; border-radius: 15px; margin-bottom: 12px; border-left: 4px solid var(--primary); }
+    .wi-step h4 { margin: 0 0 8px 0; color: var(--primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 15px; }
+    .wi-step h4 span { font-size: 11px; background: var(--primary); color: white; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+    .wi-details { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; margin-top: 10px; }
     .wi-box { background: rgba(255,255,255,0.6); padding: 10px; border-radius: 10px; }
     .wi-box strong { display: block; color: var(--text-main); margin-bottom: 5px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-    
+
     .system-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 4px 10px; background: #e0e7ff; color: #4338ca; border-radius: 20px; margin-top: 10px; }
     .role-tag { font-size: 12px; padding: 3px 10px; border-radius: 5px; font-weight: 600; }
     .role-customer { background: #dcfce7; color: #166534; }
     .role-tailor { background: #dbeafe; color: #1e40af; }
     .role-boss { background: #fef9c3; color: #854d0e; }
+    .flow-connector { text-align: center; margin: -8px 0 8px; color: var(--text-sub); font-size: 18px; }
 
-    .flow-connector { text-align: center; margin: -15px 0 15px; color: var(--text-sub); font-size: 20px; }
+    /* === Page Flow Diagram === */
+    .flow-map { display: flex; flex-direction: column; gap: 8px; }
+    .flow-row { display: flex; gap: 12px; }
+    .flow-col { flex: 1; }
+    .flow-node { background: var(--bg); border-radius: 14px; padding: 14px; border-left: 4px solid var(--primary); }
+    .flow-node.entry  { border-left-color: var(--text-sub); text-align: center; background: var(--card); border: 1px solid #e2e8f0; border-left: 4px solid var(--text-sub); }
+    .flow-node.customer-node { border-left-color: var(--success); }
+    .flow-node.admin-node    { border-left-color: var(--warning); }
+    .flow-node.info-node     { border-left-color: var(--secondary); padding: 10px 14px; }
+    .flow-node strong { display: block; font-size: 14px; margin-bottom: 6px; }
+    .flow-node ul { margin: 0; padding-left: 16px; font-size: 12px; color: var(--text-sub); line-height: 1.8; }
+    .flow-node small { font-size: 11px; color: var(--text-sub); }
+    .flow-down { text-align: center; color: var(--text-sub); font-size: 13px; padding: 2px 0; }
+    .flow-split-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    .flow-split-row .flow-node { flex: 1; }
+    .flow-split-sep { color: var(--text-sub); font-size: 20px; font-weight: 300; text-align: center; min-width: 20px; }
+    .flow-secret { background: #fffbeb; border: 1px dashed #f59e0b; border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #92400e; text-align: center; margin: 6px 0; }
+    .flow-pages-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 4px; }
+    .flow-pages-row .flow-node { text-align: center; border-left: none; border-top: 3px solid var(--secondary); }
+    .flow-pages-row a { color: var(--primary); text-decoration: none; font-size: 13px; font-weight: 500; }
+
+    @media (max-width: 480px) {
+      .wi-details { grid-template-columns: 1fr; }
+      .flow-split-row { flex-direction: column; }
+      .flow-split-sep { transform: rotate(90deg); }
+      .flow-pages-row { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <header>
+    <header class="main-header">
       <div class="brand">
-        <i class="fas fa-book"></i>
-        <h1>SOP <span>Manual</span></h1>
+        <div class="brand-icon"><i class="fas fa-scissors"></i></div>
+        <div class="brand-text">
+          <h1>Tailor<span>Hub</span></h1>
+          <p>Premium Marketplace</p>
+        </div>
       </div>
+      <nav class="main-nav">
+        <a href="index.html">หน้าแรก</a>
+        <a href="present.html" class="active">วิธีใช้งาน</a>
+        <a href="portfolio.html">ผลงาน</a>
+        <a href="contact.html">ติดต่อเรา</a>
+      </nav>
     </header>
 
     <section class="view">
       <div class="section-header">
-        <h2>คู่มือการดำเนินงานมาตรฐาน</h2>
-        <p>โครงสร้างขั้นตอนการทำงาน (Workflow) และการประมวลผลข้อมูล</p>
+        <h2><i class="fas fa-sitemap"></i> คู่มือและผังระบบ</h2>
+        <p>ผังการเชื่อมโยงหน้าต่างๆ และขั้นตอนการทำงานมาตรฐาน</p>
       </div>
 
-      <!-- SOP 01: Customer Side -->
+      <!-- ===== PAGE FLOW DIAGRAM ===== -->
+      <div class="sop-section">
+        <div class="sop-header">
+          <i class="fas fa-project-diagram"></i>
+          <h3>ผังการเชื่อมโยงระบบ (Page Flow)</h3>
+        </div>
+
+        <div class="flow-map">
+
+          <!-- Entry -->
+          <div class="flow-node entry">
+            <i class="fas fa-globe" style="color:var(--text-sub); margin-bottom:5px; display:block;"></i>
+            <strong style="color:var(--text-sub);">ผู้เยี่ยมชมทั่วไป</strong>
+            <small>เข้าสู่ <b>index.html</b> เป็นหน้าแรก</small>
+          </div>
+          <div class="flow-down"><i class="fas fa-arrow-down"></i> สมัครสมาชิก / เข้าสู่ระบบ</div>
+
+          <!-- Split: Customer vs Admin -->
+          <div class="flow-split-row">
+            <div class="flow-node customer-node">
+              <strong><i class="fas fa-user" style="margin-right:5px;"></i>ลูกค้า (Customer)</strong>
+              <ul>
+                <li>ส่งงานจ้าง + สัดส่วน</li>
+                <li>รับใบเสร็จดิจิทัล (RN)</li>
+                <li>ติดตามสถานะ Real-time</li>
+                <li>ยืนยันรับงาน + ให้คะแนน</li>
+                <li>ขอแก้ไข / เคลมงาน</li>
+              </ul>
+            </div>
+            <div class="flow-split-sep">
+              <i class="fas fa-exchange-alt"></i>
+            </div>
+            <div class="flow-node admin-node">
+              <strong><i class="fas fa-user-shield" style="margin-right:5px;"></i>Boss / ช่าง</strong>
+              <small style="margin-bottom:6px; display:block;"><i class="fas fa-lock"></i> <a href="tailor.html" style="color:var(--warning);">tailor.html</a></small>
+              <ul>
+                <li>รับงาน / ปฏิเสธ + บันทึกเหตุผล</li>
+                <li>เลือกหักสต๊อกวัสดุ</li>
+                <li>อัปโหลดรูปความคืบหน้า</li>
+                <li>แจ้งงานเสร็จสมบูรณ์</li>
+                <li>📊 <b>Boss only:</b> สต๊อก / P&L / จัดการสิทธิ์ / เงินเดือน</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Secret Access Note -->
+          <div class="flow-secret">
+            <i class="fas fa-fingerprint"></i>
+            <b>ทางเข้าแอดมินลับ:</b> กดค้างปุ่ม <i class="fas fa-fingerprint"></i> ที่หน้าลูกค้า <b>3 วินาที</b> → เมนู Admin Login จะปรากฏ
+          </div>
+          <div class="flow-down" style="font-size:11px; color:var(--text-sub);">หน้าข้อมูลเพิ่มเติม</div>
+
+          <!-- Info pages -->
+          <div class="flow-pages-row">
+            <div class="flow-node">
+              <i class="fas fa-book" style="color:var(--secondary); display:block; margin-bottom:5px;"></i>
+              <a href="present.html">วิธีใช้งาน</a>
+              <small style="display:block;">SOP / ผังระบบ</small>
+            </div>
+            <div class="flow-node">
+              <i class="fas fa-images" style="color:var(--secondary); display:block; margin-bottom:5px;"></i>
+              <a href="portfolio.html">ผลงาน</a>
+              <small style="display:block;">ตัวอย่างงาน</small>
+            </div>
+            <div class="flow-node">
+              <i class="fas fa-phone" style="color:var(--secondary); display:block; margin-bottom:5px;"></i>
+              <a href="contact.html">ติดต่อ</a>
+              <small style="display:block;">โทร / Line</small>
+            </div>
+          </div>
+
+          <!-- Status flow -->
+          <div class="sop-section" style="margin:10px 0 0; padding:15px;">
+            <p style="font-size:13px; font-weight:600; margin:0 0 10px; color:var(--text-main);"><i class="fas fa-route"></i> สถานะงานในระบบ</p>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:12px;">
+              <span class="status-badge pending">รอรับงาน</span>
+              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+              <span class="status-badge accepted">รับงานแล้ว</span>
+              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+              <span class="status-badge sewing">กำลังเย็บ</span>
+              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+              <span class="status-badge finished">เสร็จสมบูรณ์</span>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:12px; margin-top:8px;">
+              <span style="color:var(--text-sub);">หรือ:</span>
+              <span class="status-badge pending">รอรับงาน</span>
+              <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
+              <span class="status-badge low-stock">ถูกยกเลิก / ปฏิเสธ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SOP 01: Customer ===== -->
       <div class="sop-section">
         <div class="sop-header">
           <i class="fas fa-user-edit"></i>
@@ -54,7 +183,7 @@
 
         <div class="wi-step">
           <h4>ขั้นตอนที่ 1: การเปิดใบงาน (Order Placement) <span>WI-C01</span></h4>
-          <p>ลูกค้ากรอกรายละเอียดงานจ้างผ่านระบบออนไลน์</p>
+          <p style="font-size:13px; color:var(--text-sub);">ลูกค้ากรอกรายละเอียดงานจ้างผ่านระบบออนไลน์</p>
           <div class="wi-details">
             <div class="wi-box">
               <strong>ข้อมูลนำเข้า (Input)</strong>
@@ -62,31 +191,30 @@
             </div>
             <div class="wi-box">
               <strong>ผลลัพธ์ (Output)</strong>
-              รหัสงาน (RN), ใบเสร็จดิจิทัล, และการแจ้งเตือน LINE
+              รหัสงาน (RN), ใบเสร็จดิจิทัล, การแจ้งเตือนเจ้าของร้าน
             </div>
           </div>
-          <div class="system-badge"><i class="fas fa-robot"></i> System: บันทึกข้อมูลลง Google Sheets [JOBS]</div>
+          <div class="system-badge"><i class="fas fa-robot"></i> System: บันทึกลง Google Sheets [JOBS]</div>
         </div>
 
         <div class="flow-connector"><i class="fas fa-long-arrow-alt-down"></i></div>
 
         <div class="wi-step">
           <h4>ขั้นตอนที่ 2: การติดตามสถานะ (Tracking) <span>WI-C02</span></h4>
-          <p>ตรวจสอบความคืบหน้าแบบ Real-time (เหมือนระบบ Grab/ขนส่ง)</p>
           <div class="wi-details">
             <div class="wi-box">
               <strong>สถานะในระบบ</strong>
-              รอรับงาน > รับงานแล้ว > กำลังเย็บ > เสร็จสมบูรณ์
+              รอรับงาน → รับงานแล้ว → กำลังเย็บ → เสร็จสมบูรณ์
             </div>
             <div class="wi-box">
               <strong>การตอบสนอง</strong>
-              แสดงรูปความคืบหน้า (ถ้ามี), ระบบแจ้งเคลม/แก้ไข
+              ดูรูปความคืบหน้า, ยืนยัน+Rating, หรือส่งเคลมแก้ไข
             </div>
           </div>
         </div>
       </div>
 
-      <!-- SOP 02: Tailor Side -->
+      <!-- ===== SOP 02: Tailor ===== -->
       <div class="sop-section">
         <div class="sop-header">
           <i class="fas fa-cut"></i>
@@ -103,7 +231,7 @@
             </div>
             <div class="wi-box">
               <strong>ระบบสต็อก</strong>
-              เลือกวัสดุที่ใช้ ระบบจะคำนวณต้นทุนและหักจำนวนอัตโนมัติ
+              เลือกวัสดุจากคลัง ระบบคำนวณต้นทุนและหักจำนวนอัตโนมัติ
             </div>
           </div>
           <div class="system-badge"><i class="fas fa-robot"></i> System: อัปเดตตาราง [STOCK] และคำนวณต้นทุนวัสดุ</div>
@@ -116,17 +244,17 @@
           <div class="wi-details">
             <div class="wi-box">
               <strong>กำลังเย็บ (Sewing)</strong>
-              อัปเดตรูปถ่ายความคืบหน้าเพื่อให้ลูกค้าเห็นผ่านหน้าเว็บ
+              อัปเดตรูปถ่ายความคืบหน้า (วางลิงก์ Google Drive) ให้ลูกค้าเห็น
             </div>
             <div class="wi-box">
               <strong>งานเสร็จ (Finished)</strong>
-              แจ้งระบบเพื่อส่ง LINE Notify หาเจ้าของร้านเตรียมส่งมอบ
+              แจ้งระบบ → ระบบส่ง Email แจ้งเจ้าของร้านเตรียมส่งมอบ
             </div>
           </div>
         </div>
       </div>
 
-      <!-- SOP 03: Boss Side -->
+      <!-- ===== SOP 03: Boss ===== -->
       <div class="sop-section">
         <div class="sop-header">
           <i class="fas fa-chart-line"></i>
@@ -136,7 +264,6 @@
 
         <div class="wi-step">
           <h4>ระบบวิเคราะห์ P/L และค่าแรง <span>WI-B01</span></h4>
-          <p>ตรวจสอบกำไรสุทธิจากการดำเนินงาน</p>
           <div class="wi-details">
             <div class="wi-box">
               <strong>Revenue Split</strong>
@@ -149,6 +276,20 @@
           </div>
           <div class="system-badge"><i class="fas fa-robot"></i> System: ประมวลผลจากตาราง [JOBS] และ [PAYROLL]</div>
         </div>
+
+        <div class="wi-step" style="border-left-color:var(--success);">
+          <h4 style="color:var(--success);">ระบบแจ้งเตือน (Notifications) <span style="background:var(--success);">WI-B02</span></h4>
+          <div class="wi-details">
+            <div class="wi-box">
+              <strong>Email (อัตโนมัติ)</strong>
+              แจ้งเตือนงานใหม่, งานเสร็จ, สมาชิกใหม่ ทาง Email ของเจ้าของ Script
+            </div>
+            <div class="wi-box">
+              <strong>การตั้งค่า</strong>
+              ไม่ต้องตั้งค่าเพิ่ม — ส่งไปยัง Email ของ Google Account ที่ Deploy Script
+            </div>
+          </div>
+        </div>
       </div>
 
     </section>
@@ -160,7 +301,7 @@
       </div>
       <div class="nav-item active" onclick="location.href='present.html'">
         <i class="fas fa-project-diagram"></i>
-        <span>ผังระบบ</span>
+        <span>วิธีใช้งาน</span>
       </div>
       <div class="nav-item" onclick="location.href='portfolio.html'">
         <i class="fas fa-images"></i>

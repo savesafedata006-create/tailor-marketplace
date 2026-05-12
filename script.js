@@ -1,6 +1,6 @@
 // เชื่อมต่อกับ Google Sheets: https://docs.google.com/spreadsheets/d/1p2EFyCT75y_u9VKmeGIhodDWXZqGEPA3tzXWmPibdbk/edit
 // แทนที่ค่าด้านล่างนี้ด้วย Web App URL ที่ได้จากขั้นตอนการ Deploy Google Apps Script
-const SCRIPT_URL = "ใส่_URL_ที่ได้จาก_Apps_Script_ตรงนี้"; // เปลี่ยนเป็น URL ของคุณหลัง Deploy
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyHLnvQmRFTx6Qc9PYFcVFLj6ACZ_j6UX-Zci5iqwTtUaDQ618xsEMpo-7Qddc8bGSbg/exec";
 
 let allPendingJobs = []; // เก็บข้อมูลงานทั้งหมดเพื่อใช้ในการค้นหา
 let currentViewData = { jobs: [], stock: [], payroll: [] };
@@ -69,7 +69,7 @@ async function sendData() {
     alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
   } finally {
     btn.disabled = false;
-    btn.innerText = "ส่งงาน";
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> ส่งงานจ้าง';
   }
 }
 
@@ -471,48 +471,56 @@ function switchTab(type) {
   const userSection = document.getElementById('user-management-section');
   const plSection = document.getElementById('pl-report-section');
   const analysisSection = document.getElementById('rejected-analysis-section');
-  
+  const tailorStatsSection = document.getElementById('tailor-stats-section');
+  const payrollMgmtSection = document.getElementById('payroll-management-section');
+
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + type)?.classList.add('active');
+
   if (type === 'stock') {
     jobList.style.display = 'none';
     searchContainer.style.display = 'none';
+    const hideIds = ['user-management-section', 'tailor-stats-section', 'payroll-management-section'];
     perfSections.forEach(el => {
-      if (el.id !== 'user-management-section') el.style.display = 'block';
+      el.style.display = hideIds.includes(el.id) ? 'none' : 'block';
     });
-    if (userSection) userSection.style.display = 'none';
     if (plSection) plSection.style.display = 'none';
     if (analysisSection) analysisSection.style.display = 'none';
-    loadJobs('pending'); // ดึงข้อมูลเพื่อให้สต๊อกเป็นปัจจุบัน
+    loadJobs('pending');
   } else if (type === 'users') {
     jobList.style.display = 'none';
     searchContainer.style.display = 'none';
     perfSections.forEach(el => el.style.display = 'none');
     if (userSection) userSection.style.display = 'block';
-    if (plSection) plSection.style.display = 'none';
-    if (analysisSection) analysisSection.style.display = 'none';
     renderUsers(currentViewData.users);
   } else if (type === 'pl-report') {
     jobList.style.display = 'none';
     searchContainer.style.display = 'none';
     perfSections.forEach(el => el.style.display = 'none');
-    if (userSection) userSection.style.display = 'none';
     if (plSection) plSection.style.display = 'block';
-    if (analysisSection) analysisSection.style.display = 'none';
     renderPLReport(currentViewData.jobs);
   } else if (type === 'analysis') {
     jobList.style.display = 'none';
     searchContainer.style.display = 'none';
     perfSections.forEach(el => el.style.display = 'none');
-    if (userSection) userSection.style.display = 'none';
-    if (plSection) plSection.style.display = 'none';
     if (analysisSection) analysisSection.style.display = 'block';
     renderRejectedAnalysis(currentViewData.jobs);
+  } else if (type === 'my-stats') {
+    jobList.style.display = 'none';
+    searchContainer.style.display = 'none';
+    perfSections.forEach(el => el.style.display = 'none');
+    if (tailorStatsSection) tailorStatsSection.style.display = 'block';
+    renderTailorStats(currentViewData.jobs || [], currentViewData.payroll || []);
+  } else if (type === 'payroll') {
+    jobList.style.display = 'none';
+    searchContainer.style.display = 'none';
+    perfSections.forEach(el => el.style.display = 'none');
+    if (payrollMgmtSection) payrollMgmtSection.style.display = 'block';
+    renderPayrollManager(currentViewData.payroll || []);
   } else {
     jobList.style.display = 'grid';
     searchContainer.style.display = 'block';
     perfSections.forEach(el => el.style.display = 'none');
-    if (userSection) userSection.style.display = 'none';
-    if (plSection) plSection.style.display = 'none';
-    if (analysisSection) analysisSection.style.display = 'none';
     loadJobs(type);
   }
 }
@@ -1277,6 +1285,242 @@ async function cancelOrder(id) {
       loadCustomerJobs();
     } else {
       alert("ไม่สามารถยกเลิกได้: " + res.message);
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
+// === จัดการสิทธิ์ผู้ใช้ ===
+function renderUsers(users) {
+  const container = document.getElementById('user-list');
+  if (!container || !users) return;
+  const currentUserId = sessionStorage.getItem("userId");
+
+  container.innerHTML = `
+    <table class="stats-table">
+      <thead>
+        <tr><th>ID</th><th>ชื่อผู้ใช้</th><th>ชื่อจริง</th><th>โทร</th><th>สิทธิ์</th><th>จัดการ</th></tr>
+      </thead>
+      <tbody>
+        ${users.map(u => `
+          <tr>
+            <td><small>${u.user_id}</small></td>
+            <td>${u.username}</td>
+            <td>${u.full_name}</td>
+            <td>${u.phone || '-'}</td>
+            <td><span class="status-badge ${u.role === 'boss' ? 'accepted' : u.role === 'tailor' ? 'sewing' : 'pending'}">
+              ${u.role === 'boss' ? 'เจ้าของร้าน' : u.role === 'tailor' ? 'ช่าง' : 'ลูกค้า'}
+            </span></td>
+            <td>
+              ${u.user_id !== currentUserId ? `
+                <select onchange="changeUserRole('${u.user_id}', this.value)" style="padding:5px; border-radius:8px; border:1px solid var(--primary);">
+                  <option value="customer" ${u.role === 'customer' ? 'selected' : ''}>ลูกค้า</option>
+                  <option value="tailor" ${u.role === 'tailor' ? 'selected' : ''}>ช่าง</option>
+                  <option value="boss" ${u.role === 'boss' ? 'selected' : ''}>เจ้าของร้าน</option>
+                </select>
+              ` : '<span style="color:var(--text-sub); font-size:12px;">บัญชีปัจจุบัน</span>'}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function changeUserRole(userId, newRole) {
+  const roleLabel = newRole === 'boss' ? 'เจ้าของร้าน' : newRole === 'tailor' ? 'ช่าง' : 'ลูกค้า';
+  if (!confirm(`ยืนยันการเปลี่ยนสิทธิ์เป็น "${roleLabel}"?`)) {
+    renderUsers(currentViewData.users);
+    return;
+  }
+  try {
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "update_role",
+        user_id: userId,
+        role: newRole,
+        admin_id: sessionStorage.getItem("userId"),
+        admin_name: sessionStorage.getItem("userName")
+      })
+    });
+    alert("เปลี่ยนสิทธิ์สำเร็จ");
+    loadJobs('pending', true);
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
+// === สถิติส่วนตัวช่าง ===
+function renderTailorStats(jobs, payroll) {
+  const myName = sessionStorage.getItem("userName");
+  const myId = sessionStorage.getItem("userId");
+  const myJobs = jobs.filter(j => j.tailor_name === myName && j.status === 'finished');
+  const totalWage = myJobs.reduce((sum, j) => sum + (Number(j.budget) || 0), 0) * 0.4;
+
+  const myPayroll = (payroll || []).filter(p => p.user_id === myId);
+  const paidAmount = myPayroll.filter(p => p.status === 'approved').reduce((sum, p) => sum + (Number(p.net_amount) || 0), 0);
+  const pendingAmount = myPayroll.filter(p => p.status === 'pending').reduce((sum, p) => sum + (Number(p.net_amount) || 0), 0);
+  const available = Math.max(0, totalWage - paidAmount - pendingAmount);
+
+  const availEl = document.getElementById('my-available-income');
+  if (availEl) availEl.innerText = `฿${available.toLocaleString()}`;
+
+  const countEl = document.getElementById('my-finished-count');
+  if (countEl) countEl.innerText = myJobs.length;
+
+  const histEl = document.getElementById('my-payroll-history');
+  if (!histEl) return;
+
+  if (myPayroll.length === 0) {
+    histEl.innerHTML = "<p class='no-data'>ยังไม่มีประวัติการเบิกเงิน</p>";
+    return;
+  }
+
+  histEl.innerHTML = `
+    <table class="stats-table">
+      <thead>
+        <tr><th>รหัส</th><th>รอบวันที่</th><th>ยอดรวม</th><th>ภาษี 3%</th><th>ยอดสุทธิ</th><th>สถานะ</th></tr>
+      </thead>
+      <tbody>
+        ${myPayroll.map(p => `
+          <tr>
+            <td><small>${p.pay_id}</small></td>
+            <td>${p.cycle}</td>
+            <td>฿${Number(p.gross_amount).toLocaleString()}</td>
+            <td class="text-warning">฿${Number(p.tax_3).toLocaleString()}</td>
+            <td class="text-primary"><strong>฿${Number(p.net_amount).toLocaleString()}</strong></td>
+            <td><span class="status-badge ${p.status === 'approved' ? 'finished' : 'pending'}">${p.status === 'approved' ? 'อนุมัติแล้ว' : 'รอพิจารณา'}</span></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function requestPayment() {
+  const myId = sessionStorage.getItem("userId");
+  const myName = sessionStorage.getItem("userName");
+  const cycle = document.getElementById('pay-cycle')?.value;
+  const amountText = document.getElementById('my-available-income')?.innerText?.replace(/[฿,]/g, '') || '0';
+  const amount = Number(amountText);
+
+  if (amount <= 0) return alert("ไม่มียอดเงินที่สามารถเบิกได้ในขณะนี้");
+  if (!confirm(`ยืนยันการยื่นขอเบิกเงิน ฿${amount.toLocaleString()} (รอบวันที่ ${cycle})?`)) return;
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "request_payment", user_id: myId, username: myName, amount: amount, cycle: cycle })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      alert("ส่งคำขอเบิกเงินสำเร็จ! กรุณารอการอนุมัติจากเจ้าของร้าน");
+      loadJobs('pending', true);
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
+// === จัดการเงินเดือน (Boss) ===
+function renderPayrollManager(payroll) {
+  const container = document.getElementById('admin-payroll-list');
+  if (!container) return;
+
+  const pending = (payroll || []).filter(p => p.status === 'pending');
+
+  if (pending.length === 0) {
+    container.innerHTML = "<p class='no-data'>ไม่มีคำขอเบิกเงินที่รอการพิจารณา</p>";
+    return;
+  }
+
+  container.innerHTML = `
+    <table class="stats-table">
+      <thead>
+        <tr><th>รหัส</th><th>ช่าง</th><th>รอบ</th><th>ยอดรวม</th><th>ภาษี 3%</th><th>ยอดสุทธิ</th><th>จัดการ</th></tr>
+      </thead>
+      <tbody>
+        ${pending.map(p => `
+          <tr>
+            <td><small>${p.pay_id}</small></td>
+            <td>${p.username}</td>
+            <td>วันที่ ${p.cycle}</td>
+            <td>฿${Number(p.gross_amount).toLocaleString()}</td>
+            <td class="text-warning">฿${Number(p.tax_3).toLocaleString()}</td>
+            <td class="text-primary"><strong>฿${Number(p.net_amount).toLocaleString()}</strong></td>
+            <td>
+              <button class="btn-primary" style="padding:6px 14px; font-size:13px;" onclick="approvePayment('${p.pay_id}')">
+                <i class="fas fa-check"></i> อนุมัติ
+              </button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function approvePayment(payId) {
+  if (!confirm("ยืนยันการอนุมัติการเบิกเงินนี้?")) return;
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "approve_payment", pay_id: payId })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      alert("อนุมัติสำเร็จ");
+      loadJobs('pending', true);
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
+// === ช่างอัปเดตรูปความคืบหน้า ===
+async function uploadProgressPhoto(id) {
+  const photoUrl = prompt("วางลิงก์รูปภาพความคืบหน้าของงาน:\n(อัปโหลดรูปที่ Google Drive แล้วตั้งค่าให้เปิดได้สาธารณะ)");
+  if (!photoUrl || !photoUrl.trim()) return;
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "update_status", id: id, status: "sewing", progress_photo: photoUrl.trim() })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      alert("อัปเดตรูปภาพสำเร็จ");
+      loadJobs('active', true);
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
+// === Dark Mode Toggle ===
+function initTheme() {
+  const btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+
+  if (localStorage.getItem('tailorTheme') === 'dark') {
+    document.documentElement.classList.add('dark-mode');
+    btn.innerHTML = '<i class="fas fa-sun"></i>';
+  }
+
+  btn.addEventListener('click', () => {
+    const isDark = document.documentElement.classList.toggle('dark-mode');
+    btn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    localStorage.setItem('tailorTheme', isDark ? 'dark' : 'light');
+  });
+}
+
+// === ลูกค้าขอแก้ไข/เคลมงาน ===
+async function requestRevision(id) {
+  const notes = prompt("ระบุรายละเอียดที่ต้องการแก้ไข หรือปัญหาที่พบ:");
+  if (notes === null) return;
+  if (!notes.trim()) return alert("กรุณาระบุรายละเอียดก่อน");
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "update_status", id: id, status: "sewing", dispute_notes: notes.trim() })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      alert("ส่งคำขอแก้ไขสำเร็จ ช่างจะดำเนินการแก้ไขให้");
+      loadCustomerJobs();
     }
   } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
 }

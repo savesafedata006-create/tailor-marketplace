@@ -246,8 +246,9 @@
   <script src="script.js" defer></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      checkCustomerAuth(); // Only call customer auth for index.html
+      checkCustomerAuth();
       if (typeof initScrollReveal === 'function') initScrollReveal();
+      if (typeof initPortalLongPress === 'function') initPortalLongPress();
     });
   </script>
 </body>

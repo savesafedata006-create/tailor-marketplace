@@ -3,45 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contact Us - Tailor Marketplace</title>
+  <title>ติดต่อเรา - Tailor Marketplace</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .contact-card { background: var(--card); border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 15px; }
+    .contact-item { display: flex; align-items: flex-start; gap: 15px; padding: 14px 0; border-bottom: 1px solid var(--bg); }
+    .contact-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .contact-icon { width: 42px; height: 42px; border-radius: 12px; background: #e0e7ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .contact-icon i { color: var(--primary); font-size: 18px; }
+    .contact-icon.line-icon { background: #e8f5e9; }
+    .contact-icon.line-icon i { color: #4caf50; }
+    .contact-icon.phone-icon { background: #e3f2fd; }
+    .contact-icon.phone-icon i { color: #1e88e5; }
+    .contact-icon.loc-icon { background: #fce4ec; }
+    .contact-icon.loc-icon i { color: #e91e63; }
+    .contact-icon.clock-icon { background: #fff8e1; }
+    .contact-icon.clock-icon i { color: #f59e0b; }
+    .contact-label { font-size: 12px; color: var(--text-sub); margin-bottom: 3px; }
+    .contact-value { font-size: 15px; font-weight: 500; }
+    .contact-value a { color: var(--primary); text-decoration: none; }
+    .cta-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+    .cta-buttons .btn-primary, .cta-buttons .btn-secondary { flex: 1; min-width: 130px; justify-content: center; }
+    .map-placeholder { background: var(--bg); border-radius: 15px; height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text-sub); font-size: 13px; margin-bottom: 15px; }
+  </style>
 </head>
 <body>
   <div class="container">
-    <header>
+    <header class="main-header">
       <div class="brand">
-        <i class="fas fa-scissors"></i>
-        <h1>Tailor <span>Contact</span></h1>
+        <div class="brand-icon"><i class="fas fa-scissors"></i></div>
+        <div class="brand-text">
+          <h1>Tailor<span>Hub</span></h1>
+          <p>Premium Marketplace</p>
+        </div>
       </div>
+      <nav class="main-nav">
+        <a href="index.html">หน้าแรก</a>
+        <a href="present.html">วิธีใช้งาน</a>
+        <a href="portfolio.html">ผลงาน</a>
+        <a href="contact.html" class="active">ติดต่อเรา</a>
+      </nav>
     </header>
 
     <section class="view">
       <div class="section-header">
         <h2><i class="fas fa-id-card"></i> ติดต่อเรา</h2>
-        <p>หากมีข้อสงสัยหรือต้องการสอบถามเพิ่มเติม</p>
+        <p>พร้อมให้บริการ จันทร์–เสาร์ 09:00–18:00 น.</p>
       </div>
 
-      <div class="form-group">
-        <div class="input-item">
-          <label><i class="fas fa-map-marker-alt"></i> ที่อยู่ร้าน</label>
-          <p style="font-size: 14px;">123 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110</p>
+      <!-- Map placeholder -->
+      <div class="map-placeholder">
+        <i class="fas fa-map-marked-alt" style="font-size:28px; color:var(--primary);"></i>
+        <span>123 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110</span>
+      </div>
+
+      <div class="contact-card">
+        <div class="contact-item">
+          <div class="contact-icon loc-icon"><i class="fas fa-map-marker-alt"></i></div>
+          <div>
+            <div class="contact-label">ที่อยู่ร้าน</div>
+            <div class="contact-value">123 ถนนสุขุมวิท แขวงคลองเตย<br>เขตคลองเตย กรุงเทพฯ 10110</div>
+          </div>
         </div>
-        <div class="input-item">
-          <label><i class="fas fa-phone"></i> เบอร์โทรศัพท์</label>
-          <p style="font-size: 14px;">02-123-4567, 081-234-5678</p>
+        <div class="contact-item">
+          <div class="contact-icon phone-icon"><i class="fas fa-phone"></i></div>
+          <div>
+            <div class="contact-label">เบอร์โทรศัพท์</div>
+            <div class="contact-value">
+              <a href="tel:021234567">02-123-4567</a> &nbsp;/&nbsp;
+              <a href="tel:0812345678">081-234-5678</a>
+            </div>
+          </div>
         </div>
-        <div class="input-item">
-          <label><i class="fab fa-line"></i> Line ID</label>
-          <p style="font-size: 14px;">@tailor_marketplace</p>
+        <div class="contact-item">
+          <div class="contact-icon line-icon"><i class="fab fa-line"></i></div>
+          <div>
+            <div class="contact-label">Line ID</div>
+            <div class="contact-value"><a href="https://line.me/ti/p/~@tailor_marketplace" target="_blank">@tailor_marketplace</a></div>
+          </div>
         </div>
-        <div class="input-item">
-          <label><i class="fas fa-clock"></i> เวลาทำการ</label>
-          <p style="font-size: 14px;">จันทร์ - เสาร์: 09:00 - 18:00 น.</p>
+        <div class="contact-item">
+          <div class="contact-icon clock-icon"><i class="fas fa-clock"></i></div>
+          <div>
+            <div class="contact-label">เวลาทำการ</div>
+            <div class="contact-value">จันทร์ – เสาร์: 09:00 – 18:00 น.</div>
+          </div>
         </div>
-        <button class="btn-primary" onclick="window.open('https://line.me', '_blank')">
+      </div>
+
+      <div class="cta-buttons">
+        <button class="btn-primary" onclick="window.open('https://line.me/ti/p/~@tailor_marketplace', '_blank')">
           <i class="fab fa-line"></i> แชทผ่าน Line
+        </button>
+        <button class="btn-primary" style="background:linear-gradient(135deg,#25d366,#128c7e);" onclick="window.open('tel:021234567')">
+          <i class="fas fa-phone"></i> โทรเลย
+        </button>
+      </div>
+
+      <div style="margin-top:20px; text-align:center;">
+        <p style="font-size:13px; color:var(--text-sub); margin-bottom:12px;">หรือสั่งงานได้เลยผ่านระบบออนไลน์</p>
+        <button class="btn-secondary" onclick="location.href='index.html'" style="width:100%;">
+          <i class="fas fa-pen-ruler"></i> ไปหน้าสั่งงาน
         </button>
       </div>
     </section>
@@ -50,6 +114,10 @@
       <div class="nav-item" onclick="location.href='index.html'">
         <i class="fas fa-home"></i>
         <span>หน้าหลัก</span>
+      </div>
+      <div class="nav-item" onclick="location.href='present.html'">
+        <i class="fas fa-project-diagram"></i>
+        <span>วิธีใช้งาน</span>
       </div>
       <div class="nav-item" onclick="location.href='portfolio.html'">
         <i class="fas fa-images"></i>

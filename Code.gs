@@ -72,7 +72,7 @@ function doPost(e) {
     const sheet = ss.getSheetByName("JOBS"); // ต้องมีอยู่แล้วจาก doGet
     const id = Utilities.getUuid();
     const rn = "RN-" + Math.floor(1000 + Math.random() * 9000) + "-" + Date.now().toString().slice(-4);
-    sheet.appendRow([id, rn, content.customer_name, content.customer_phone, content.customer_line, content.job_detail, content.job_category, content.budget, "pending", "", content.user_id || "GUEST", new Date()]);
+    sheet.appendRow([id, rn, content.customer_name, content.customer_phone, content.customer_line, content.job_detail, content.job_category, content.budget, "pending", "", content.user_id || "GUEST", new Date(), "", "", "", content.measurements || "", "", ""]);
     sendNotify(ss, `🆕 มีงานจ้างใหม่!\n📌 เลขที่: ${rn}\n👤 ลูกค้า: ${content.customer_name}\n📞 โทร: ${content.customer_phone}\n📝 รายละเอียด: ${content.job_detail}\n💰 งบประมาณ: ฿${Number(content.budget).toLocaleString()}`);
     return createResponse({ status: "success", id: id, rn: rn });
   }
@@ -81,6 +81,7 @@ function doPost(e) {
   if (content.action === "update_status") {
     const sheet = ss.getSheetByName("JOBS"); // ต้องมีอยู่แล้วจาก doGet
     const data = sheet.getDataRange().getValues();
+    let jobRow = -1;
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] == content.id) {
         sheet.getRange(i + 1, 9).setValue(content.status);
@@ -111,14 +112,16 @@ function doPost(e) {
         // แจ้งเตือนกรณีงานไม่สำเร็จ
         if (content.status === "cancelled" || content.status === "rejected") {
           const reason = content.cancellation_reason || "ไม่ได้ระบุ";
+          sheet.getRange(i + 1, 13).setValue(reason);
           const prefix = content.status === "cancelled" ? "❌ งานถูกยกเลิก" : "🚫 ปฏิเสธงาน";
           sendNotify(ss, `${prefix}!\n📌 เลขที่: ${data[i][1]}\n👤 ลูกค้า: ${data[i][2]}\n📝 เหตุผล: ${reason}`);
         }
+        jobRow = i;
         break;
       }
     }
     // หักสต็อกและคำนวณต้นทุนวัสดุ
-    if (content.status === "accepted" && content.stock_id) {
+    if (content.status === "accepted" && content.stock_id && jobRow > -1) {
       const sSheet = ss.getSheetByName("STOCK"); // ต้องมีอยู่แล้วจาก doGet
       const sData = sSheet.getDataRange().getValues();
       const sHeaders = sData[0];
@@ -135,7 +138,7 @@ function doPost(e) {
           sSheet.getRange(j + 1, 4).setValue(newQty);
           sSheet.getRange(j + 1, 8).setValue(new Date());
           // บันทึกต้นทุนวัสดุลงในแผ่นงาน JOBS (คอลัมน์ที่ 15)
-          sheet.getRange(i + 1, 15).setValue(materialCost);
+          sheet.getRange(jobRow + 1, 15).setValue(materialCost);
 
           if (newQty <= Number(sData[j][6])) {
             sendNotify(ss, `⚠️ เตือน: วัสดุใกล้หมด!\n📦 วัสดุ: ${sData[j][2]}\n📉 คงเหลือ: ${newQty} ${sData[j][4]}`);
@@ -298,16 +301,32 @@ function getSheetData(ss, sheetName) {
 }
 
 function sendNotify(ss, msg) {
-  const cSheet = ss.getSheetByName("CONFIG");
-  if (!cSheet) return;
-  const data = cSheet.getDataRange().getValues();
-  let token = "";
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === "line_token") { token = data[i][1]; break; }
+  // Primary: Email to script owner (always works, no config needed)
+  try {
+    const ownerEmail = Session.getActiveUser().getEmail();
+    if (ownerEmail) {
+      const subject = "🔔 TailorHub แจ้งเตือน — " + msg.split('\n')[0];
+      MailApp.sendEmail(ownerEmail, subject, msg);
+    }
+  } catch (e) {
+    Logger.log("Email notify failed: " + e.message);
   }
-  if (!token) return;
-  const options = { "method": "post", "headers": { "Authorization": "Bearer " + token }, "payload": { "message": "\n" + msg } };
-  UrlFetchApp.fetch("https://notify-api.line.me/api/notify", options);
+
+  // Secondary: LINE Notify (deprecated April 2025 — kept for legacy config)
+  try {
+    const cSheet = ss.getSheetByName("CONFIG");
+    if (!cSheet) return;
+    const data = cSheet.getDataRange().getValues();
+    let token = "";
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === "line_token") { token = data[i][1]; break; }
+    }
+    if (!token) return;
+    const options = { "method": "post", "headers": { "Authorization": "Bearer " + token }, "payload": { "message": "\n" + msg } };
+    UrlFetchApp.fetch("https://notify-api.line.me/api/notify", options);
+  } catch (e) {
+    Logger.log("LINE notify failed: " + e.message);
+  }
 }
 
 function logEvent(ss, uId, uName, action, details, status) {

@@ -289,7 +289,8 @@
   <script src="script.js" defer></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      checkAuth(); // Only call admin auth for tailor.html
+      checkAuth();
+      if (typeof initTheme === 'function') initTheme();
     });
   </script>
 </body>
