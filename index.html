@@ -18,56 +18,69 @@
 </head>
 <body>
   <div class="container">
-    <header>
+    <header class="main-header">
       <div class="brand">
-        <i class="fas fa-scissors"></i>
-        <h1>Tailor <span>Order</span></h1>
+        <div class="brand-icon">
+          <i class="fas fa-scissors"></i>
+        </div>
+        <div class="brand-text">
+          <h1>Tailor<span>Hub</span></h1>
+          <p>Premium Marketplace</p>
+        </div>
       </div>
-      <div id="user-profile-header" style="display:none;">
-        <span id="display-user-name"></span>
-        <button class="btn-logout" onclick="openChangePasswordModal()" style="padding: 5px 10px; font-size: 12px; margin-left: 10px;">เปลี่ยนรหัสผ่าน</button>
-        <button class="btn-logout" onclick="logoutCustomer()" style="padding: 5px 10px; font-size: 12px; margin-left: 10px;">ออกจากระบบ</button>
-      </div>
-      <div id="boss-return-link" class="boss-only" style="display:none;">
-        <a href="tailor.html" class="btn-logout" style="text-decoration:none; background:var(--primary); color:white; border:none;"><i class="fas fa-arrow-left"></i> กลับหน้าจัดการ</a>
-      </div>
-      <div class="portal-access-container" id="portal-access-container">
-        <button class="portal-access-btn" title="System Info">
-          <i class="fas fa-key"></i> <!-- เปลี่ยนเป็นไอคอนกุญแจลับ -->
-        </button>
-        <div class="portal-dropdown" id="portal-dropdown">
-          <a href="tailor.html" class="dropdown-item">Admin Login</a>
+      <nav class="main-nav">
+        <a href="index.html" class="active">หน้าแรก</a>
+        <a href="present.html">วิธีใช้งาน</a>
+        <a href="portfolio.html">ผลงาน</a>
+        <a href="contact.html">ติดต่อเรา</a>
+      </nav>
+      <div class="header-actions">
+        <div id="user-profile-header" class="hidden">
+          <span id="display-user-name"></span>
+          <button class="btn-icon" onclick="openChangePasswordModal()" title="เปลี่ยนรหัสผ่าน"><i class="fas fa-key"></i></button>
+          <button class="btn-icon btn-danger" onclick="logoutCustomer()" title="ออกจากระบบ"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+        <div id="boss-return-link" class="boss-only hidden">
+          <a href="tailor.html" class="btn-pill"><i class="fas fa-user-shield"></i> จัดการร้าน</a>
+        </div>
+        <div class="portal-access-container" id="portal-access-container">
+          <button class="portal-access-btn" title="System Access">
+            <i class="fas fa-fingerprint"></i>
+          </button>
+          <div class="portal-dropdown" id="portal-dropdown">
+            <a href="tailor.html" class="dropdown-item"><i class="fas fa-lock"></i> Admin Login</a>
+          </div>
         </div>
       </div>
     </header>
 
     <!-- How it works Section -->
-    <section class="how-it-works">
+    <section class="how-it-works reveal">
       <div class="section-header">
-        <h2><i class="fas fa-list-ol"></i> 4 ขั้นตอนง่ายๆ ในการจ้างงาน</h2>
+        <h2>จ้างงานง่ายๆ ใน <span>4 ขั้นตอน</span></h2>
       </div>
       <div class="steps-grid">
-        <div class="step-item">
-          <div class="step-num">1</div>
+        <div class="step-item reveal" onclick="document.getElementById('auth-view').scrollIntoView({behavior:'smooth'})">
+          <div class="step-icon-wrapper"><i class="fas fa-user-plus"></i></div>
           <p>สมัครสมาชิก / เข้าสู่ระบบ</p>
         </div>
-        <div class="step-item">
-          <div class="step-num">2</div>
+        <div class="step-item reveal" onclick="switchCustomerTab('order')">
+          <div class="step-icon-wrapper"><i class="fas fa-pen-ruler"></i></div>
           <p>ส่งรายละเอียดงานและงบประมาณ</p>
         </div>
-        <div class="step-item">
-          <div class="step-num">3</div>
+        <div class="step-item reveal">
+          <div class="step-icon-wrapper"><i class="fas fa-scissors"></i></div>
           <p>รอช่างกดรับงานและเริ่มเย็บ</p>
         </div>
-        <div class="step-item">
-          <div class="step-num">4</div>
+        <div class="step-item reveal" onclick="switchCustomerTab('history')">
+          <div class="step-icon-wrapper"><i class="fas fa-box-open"></i></div>
           <p>ติดตามสถานะจนเสร็จและรับงาน</p>
         </div>
       </div>
     </section>
 
     <!-- Auth Section -->
-    <section id="auth-view" class="view">
+    <section id="auth-view" class="view reveal">
       <div class="section-header">
         <h2><i class="fas fa-user-circle"></i> สมาชิก / เข้าสู่ระบบ</h2>
         <p>เข้าสู่ระบบเพื่อติดตามสถานะงานของคุณ</p>
@@ -83,6 +96,9 @@
           <a href="#" onclick="toggleAuth('forgot')">ลืมรหัสผ่าน?</a>
           <span>ยังไม่มีบัญชี? <a href="#" onclick="toggleAuth('register')">สมัครสมาชิก</a></span>
         </div>
+        <a href="#" onclick="fillDemoLogin('customer')" class="btn-demo">
+          <i class="fas fa-vial"></i> เข้าใช้งานระบบ Demo (Admin)
+        </a>
       </div>
       <div class="form-group" id="register-form" style="display:none;">
         <input type="text" id="reg-username" placeholder="ชื่อผู้ใช้งาน">
@@ -136,6 +152,20 @@
             <option value="เดรส">ชุดเดรส (Dress)</option>
             <option value="อื่นๆ">อื่นๆ (Other)</option>
           </select>
+        </div>
+        <div class="input-item" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+          <div>
+            <label>รอบอก (นิ้ว)</label>
+            <input type="number" id="m-chest" placeholder="0">
+          </div>
+          <div>
+            <label>รอบเอว (นิ้ว)</label>
+            <input type="number" id="m-waist" placeholder="0">
+          </div>
+          <div>
+            <label>ความยาว (นิ้ว)</label>
+            <input type="number" id="m-length" placeholder="0">
+          </div>
         </div>
         <div class="input-item">
           <label>รายละเอียดที่ต้องการ</label>
@@ -193,10 +223,31 @@
     </div>
   </div>
 
+  <!-- Bottom Navigation for Mobile -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span>หน้าหลัก</span>
+    </div>
+    <div class="nav-item" onclick="location.href='present.html'">
+      <i class="fas fa-project-diagram"></i>
+      <span>วิธีใช้งาน</span>
+    </div>
+    <div class="nav-item" onclick="location.href='portfolio.html'">
+      <i class="fas fa-images"></i>
+      <span>ผลงาน</span>
+    </div>
+    <div class="nav-item" onclick="location.href='contact.html'">
+      <i class="fas fa-phone"></i>
+      <span>ติดต่อ</span>
+    </div>
+  </div>
+
   <script src="script.js" defer></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       checkCustomerAuth(); // Only call customer auth for index.html
+      if (typeof initScrollReveal === 'function') initScrollReveal();
     });
   </script>
 </body>

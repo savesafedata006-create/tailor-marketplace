@@ -4,7 +4,7 @@ function doGet(e) {
   // 1. ตรวจสอบ/สร้างแผ่นงาน JOBS
   let jobsSheet = ss.getSheetByName("JOBS") || ss.insertSheet("JOBS");
   if (jobsSheet.getLastRow() === 0) {
-    jobsSheet.appendRow(["id", "rn", "customer_name", "customer_phone", "customer_line", "job_detail", "job_category", "budget", "status", "tailor_name", "user_id", "created_at"]);
+    jobsSheet.appendRow(["id", "rn", "customer_name", "customer_phone", "customer_line", "job_detail", "job_category", "budget", "status", "tailor_name", "user_id", "created_at", "cancellation_reason", "rating", "material_cost", "measurements", "progress_photo", "dispute_notes"]);
   }
 
   // 2. ตรวจสอบ/สร้างแผ่นงาน USERS
@@ -38,6 +38,12 @@ function doGet(e) {
   if (configSheet.getLastRow() === 0) {
     configSheet.appendRow(["key", "value"]);
     configSheet.appendRow(["line_token", ""]);
+  }
+
+  // 7. ตรวจสอบ/สร้างแผ่นงาน MEASUREMENTS
+  let measureSheet = ss.getSheetByName("MEASUREMENTS") || ss.insertSheet("MEASUREMENTS");
+  if (measureSheet.getLastRow() === 0) {
+    measureSheet.appendRow(["user_id", "chest", "waist", "hips", "length", "shoulder", "last_updated"]);
   }
 
   const response = {
@@ -79,18 +85,58 @@ function doPost(e) {
       if (data[i][0] == content.id) {
         sheet.getRange(i + 1, 9).setValue(content.status);
         if (content.tailor_name) sheet.getRange(i + 1, 10).setValue(content.tailor_name);
+        
+        // ระบบแจ้งเตือน LINE เฉพาะเมื่อสถานะเป็น Finished
+        if (content.status === "finished") {
+          sendNotify(ss, `✅ งานเสร็จแล้ว!\n📌 เลขที่: ${data[i][1]}\n👤 ลูกค้า: ${data[i][2]}\n👨‍🔧 ช่าง: ${content.tailor_name || "ไม่ระบุ"}\n📦 พร้อมสำหรับการส่งมอบหรือรับสินค้า`);
+        }
+
+        // บันทึกรูปถ่ายความคืบหน้า (ถ้ามี)
+        if (content.progress_photo) sheet.getRange(i + 1, 17).setValue(content.progress_photo);
+
+        // บันทึกหมายเหตุการเคลม/แก้ไข (ถ้ามี)
+        if (content.dispute_notes) sheet.getRange(i + 1, 18).setValue(content.dispute_notes);
+        
+        
+        // บันทึก Log การเปลี่ยนสถานะ
+        const logDetails = `เปลี่ยนสถานะงาน ${data[i][1]} เป็น ${content.status}`;
+        logEvent(ss, content.admin_id || "SYSTEM", content.tailor_name || "SYSTEM", "UPDATE_STATUS", logDetails, "success");
+
+        
+        // บันทึกคะแนน (Rating) ถ้ามีการส่งมา
+        if (content.rating) {
+          sheet.getRange(i + 1, 14).setValue(content.rating); // คอลัมน์ที่ 14
+        }
+        
+        // แจ้งเตือนกรณีงานไม่สำเร็จ
+        if (content.status === "cancelled" || content.status === "rejected") {
+          const reason = content.cancellation_reason || "ไม่ได้ระบุ";
+          const prefix = content.status === "cancelled" ? "❌ งานถูกยกเลิก" : "🚫 ปฏิเสธงาน";
+          sendNotify(ss, `${prefix}!\n📌 เลขที่: ${data[i][1]}\n👤 ลูกค้า: ${data[i][2]}\n📝 เหตุผล: ${reason}`);
+        }
         break;
       }
     }
-    // หักสต็อก
+    // หักสต็อกและคำนวณต้นทุนวัสดุ
     if (content.status === "accepted" && content.stock_id) {
       const sSheet = ss.getSheetByName("STOCK"); // ต้องมีอยู่แล้วจาก doGet
       const sData = sSheet.getDataRange().getValues();
+      const sHeaders = sData[0];
+      const priceIdx = sHeaders.indexOf("unit_price");
+
       for (let j = 1; j < sData.length; j++) {
         if (sData[j][0] == content.stock_id) {
-          const newQty = Number(sData[j][3]) - Number(content.stock_qty);
+          const qtyUsed = Number(content.stock_qty);
+          const unitPrice = Number(sData[j][priceIdx]) || 0;
+          const materialCost = qtyUsed * unitPrice;
+
+          // หักสต็อก
+          const newQty = Number(sData[j][3]) - qtyUsed;
           sSheet.getRange(j + 1, 4).setValue(newQty);
           sSheet.getRange(j + 1, 8).setValue(new Date());
+          // บันทึกต้นทุนวัสดุลงในแผ่นงาน JOBS (คอลัมน์ที่ 15)
+          sheet.getRange(i + 1, 15).setValue(materialCost);
+
           if (newQty <= Number(sData[j][6])) {
             sendNotify(ss, `⚠️ เตือน: วัสดุใกล้หมด!\n📦 วัสดุ: ${sData[j][2]}\n📉 คงเหลือ: ${newQty} ${sData[j][4]}`);
           }
@@ -206,6 +252,25 @@ function doPost(e) {
         sSheet.getRange(i + 1, 8).setValue(new Date());
         break;
       }
+    }
+    return createResponse({ status: "success" });
+  }
+
+  // 11. อัปเดตสัดส่วนลูกค้า (Update Measurements)
+  if (content.action === "update_measurements") {
+    const mSheet = ss.getSheetByName("MEASUREMENTS");
+    const mData = mSheet.getDataRange().getValues();
+    let found = false;
+    for (let i = 1; i < mData.length; i++) {
+      if (mData[i][0] == content.user_id) {
+        mSheet.getRange(i + 1, 2, 1, 5).setValues([[content.chest, content.waist, content.hips, content.length, content.shoulder]]);
+        mSheet.getRange(i + 1, 7).setValue(new Date());
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      mSheet.appendRow([content.user_id, content.chest, content.waist, content.hips, content.length, content.shoulder, new Date()]);
     }
     return createResponse({ status: "success" });
   }

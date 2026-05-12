@@ -24,6 +24,9 @@
           <input type="checkbox" id="boss-remember"> จดจำฉันในระบบ
         </label>
         <button class="btn-primary" onclick="loginBoss()">เข้าสู่ระบบ</button>
+        <a href="#" onclick="fillDemoLogin('tailor')" class="btn-demo">
+          <i class="fas fa-vial"></i> เข้าใช้งานระบบ Demo (Admin)
+        </a>
         <p style="margin-top: 15px; font-size: 13px;"><a href="#" onclick="toggleTailorForgot(true)">ลืมรหัสผ่าน?</a></p>
       </div>
       <div id="tailor-forgot-fields" style="display:none;">
@@ -42,6 +45,12 @@
         <i class="fas fa-cut"></i>
         <h1>Tailor <span>Admin</span></h1>
       </div>
+      <nav class="main-nav">
+        <a href="index.html">หน้าลูกค้า</a>
+        <a href="present.html">วิธีใช้งาน</a>
+        <a href="portfolio.html">ผลงาน</a>
+        <a href="contact.html">ติดต่อเรา</a>
+      </nav>
       <button class="btn-logout" onclick="openChangePasswordModal()" style="margin-right: 10px;">
         <i class="fas fa-key"></i> เปลี่ยนรหัสผ่าน
       </button>
@@ -102,12 +111,28 @@
           <h3>ทำสำเร็จทั้งหมด</h3>
           <p id="count-finished">0</p>
         </div>
+        <div class="dash-card">
+          <h3 style="color: var(--warning);">ปฏิเสธงาน</h3>
+          <p id="count-rejected">0</p>
+        </div>
       </div>
 
       <!-- Boss Performance & Distribution -->
       <div class="boss-only performance-section">
         <h3><i class="fas fa-hand-holding-usd"></i> ระบบแจกแจงค่าแรง (ช่าง 40% / ร้าน 60%)</h3>
         <div id="tailor-performance"></div>
+      </div>
+
+      <!-- Monthly P&L Report Section -->
+      <div class="boss-only performance-section" id="pl-report-section" style="display: none;">
+        <h3><i class="fas fa-file-invoice-dollar"></i> รายงานกำไร-ขาดทุนรายเดือน (P&L)</h3>
+        <p class="loader">กำลังประมวลผลรายงาน...</p>
+      </div>
+
+      <!-- Rejected Jobs Analysis Section -->
+      <div class="boss-only performance-section" id="rejected-analysis-section" style="display: none;">
+        <h3><i class="fas fa-exclamation-circle"></i> วิเคราะห์สาเหตุการปฏิเสธงาน</h3>
+        <div id="rejected-list" class="table-container"></div>
       </div>
 
       <!-- Stock Value Chart Section -->
@@ -210,6 +235,9 @@
         <button onclick="switchTab('pl-report')" class="tab-btn boss-only" id="tab-pl-report" style="display: none;">
           <i class="fas fa-chart-line"></i> กำไร-ขาดทุน
         </button>
+        <button onclick="switchTab('analysis')" class="tab-btn boss-only" id="tab-analysis" style="display: none;">
+          <i class="fas fa-search-minus"></i> วิเคราะห์ปัญหา
+        </button>
       </div>
 
       <div id="job-list" class="job-grid">
@@ -235,6 +263,26 @@
           <button class="btn-secondary" onclick="closeChangePasswordModal()">ยกเลิก</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation for Mobile -->
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span>หน้าหลัก</span>
+    </div>
+    <div class="nav-item" onclick="location.href='present.html'">
+      <i class="fas fa-project-diagram"></i>
+      <span>วิธีใช้งาน</span>
+    </div>
+    <div class="nav-item" onclick="location.href='portfolio.html'">
+      <i class="fas fa-images"></i>
+      <span>ผลงาน</span>
+    </div>
+    <div class="nav-item" onclick="location.href='contact.html'">
+      <i class="fas fa-phone"></i>
+      <span>ติดต่อ</span>
     </div>
   </div>
 

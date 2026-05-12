@@ -32,13 +32,21 @@ async function sendData() {
     job_detail: document.getElementById("job_detail").value,
     job_category: document.getElementById("job_category").value,
     budget: document.getElementById("budget").value,
-    user_id: sessionStorage.getItem("userId") || "GUEST"
+    user_id: sessionStorage.getItem("userId") || "GUEST",
+    measurements: JSON.stringify({
+      chest: document.getElementById("m-chest")?.value || "",
+      waist: document.getElementById("m-waist")?.value || "",
+      length: document.getElementById("m-length")?.value || ""
+    })
   };
 
-  if (!data.customer_name || !data.customer_phone || !data.job_detail) {
-    alert("กรุณากรอก ชื่อ, เบอร์โทร และรายละเอียดงาน");
+  if (!data.customer_name || !data.customer_phone || !data.job_detail || !data.budget) {
+    alert("กรุณากรอกข้อมูลให้ครบถ้วน: ชื่อ, เบอร์โทร, รายละเอียดงาน และงบประมาณ");
     return;
   }
+
+  const confirmMsg = "ยืนยันการส่งงาน? \n*ราคาที่ระบุเป็นราคาประเมินเบื้องต้น อาจมีค่าใช้จ่ายเพิ่มเติมตามวัสดุที่เลือกจริง*";
+  if (!confirm(confirmMsg)) return;
 
   try {
     btn.disabled = true;
@@ -75,12 +83,25 @@ async function loginBoss() {
   btn.disabled = true;
   btn.innerText = "กำลังตรวจสอบ...";
 
+  // Local Bypass สำหรับ Admin Demo (เข้าถึงได้ทุกอย่าง)
+  if (username === "admin" && password === "1234") {
+    const adminUser = { user_id: "ADMIN-001", full_name: "ผู้ดูแลระบบ (Master Admin)", role: "boss" };
+    sessionStorage.setItem("userRole", adminUser.role);
+    sessionStorage.setItem("userName", adminUser.full_name);
+    sessionStorage.setItem("userId", adminUser.user_id);
+    if (remember) {
+      localStorage.setItem("userRole", adminUser.role);
+    }
+    return checkAuth();
+  }
+
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
       body: JSON.stringify({ action: "login", username: username, password: password })
     });
     const result = await response.json();
+    console.log("Login Result:", result); // ดูข้อมูลที่ได้รับจาก Google Script
 
     if (result.status === "success") {
       sessionStorage.setItem("userRole", result.user.role);
@@ -95,9 +116,11 @@ async function loginBoss() {
 
       checkAuth();
     } else {
+      console.warn("Login Failed:", result.message);
       alert(result.message || "Login ไม่สำเร็จ");
     }
   } catch (error) {
+    console.error("Connection Error:", error); // ดู Error ของ Network หรือ Fetch
     alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
   } finally {
     btn.disabled = false;
@@ -128,6 +151,7 @@ async function registerCustomer() {
       body: JSON.stringify(data)
     });
     const result = await response.json();
+    console.log("Register Result:", result);
 
     if (result.status === "success") {
       alert("ลงทะเบียนสำเร็จ!");
@@ -149,14 +173,27 @@ async function loginCustomer() {
   };
   const remember = document.getElementById('login-remember').checked;
 
+  // Local Bypass สำหรับ Admin Demo (เข้าหน้าลูกค้าได้ด้วยสิทธิ์ Boss)
+  if (data.username === "admin" && data.password === "1234") {
+    const adminUser = { user_id: "ADMIN-001", full_name: "ผู้ดูแลระบบ (Master Admin)", role: "boss" };
+    sessionStorage.setItem("userRole", adminUser.role);
+    sessionStorage.setItem("userName", adminUser.full_name);
+    sessionStorage.setItem("userId", adminUser.user_id);
+    if (remember) {
+      localStorage.setItem("userRole", adminUser.role);
+    }
+    return checkCustomerAuth();
+  }
+
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
       body: JSON.stringify(data)
     });
     const result = await response.json();
+    console.log("Customer Login Result:", result);
 
-    if (result.status === "success" && result.user.role === 'customer') {
+    if (result.status === "success") {
       sessionStorage.setItem("userRole", result.user.role);
       sessionStorage.setItem("userName", result.user.full_name);
       sessionStorage.setItem("userId", result.user.user_id);
@@ -169,9 +206,13 @@ async function loginCustomer() {
 
       checkCustomerAuth();
     } else {
+      console.warn("Customer Login Failed:", result.message);
       alert("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");
     }
-  } catch (e) { alert("เกิดข้อผิดพลาด"); }
+  } catch (e) {
+    console.error("Customer Login Fetch Error:", e);
+    alert("เกิดข้อผิดพลาด"); 
+  }
 }
 
 function logoutCustomer() {
@@ -181,35 +222,47 @@ function logoutCustomer() {
 }
 
 function checkCustomerAuth() {
-  // ปิดระบบ Login สำหรับ Demo: บังคับเป็น Customer เพื่อให้เข้าถึงหน้าสั่งงานได้
-  const role = "customer"; // Changed to customer
-  const name = "ลูกค้า (Demo Mode)";
-  const userId = "DEMO-CUSTOMER-001";
+  const role = sessionStorage.getItem("userRole") || localStorage.getItem("userRole");
+  const name = sessionStorage.getItem("userName") || localStorage.getItem("userName");
 
   const authView = document.getElementById("auth-view");
   const customerView = document.getElementById("customer-view");
   const profileHeader = document.getElementById("user-profile-header");
   const portalAccessContainer = document.getElementById("portal-access-container");
-  const bossReturn = document.getElementById("boss-return-link"); // Get the element
+  const bossReturn = document.getElementById("boss-return-link");
 
-  if (authView) authView.style.display = "none";
-  if (customerView) customerView.style.display = "block";
-  if (portalAccessContainer) portalAccessContainer.style.display = "none"; // ซ่อนปุ่มลับเมื่อ Login แล้ว
-  if (profileHeader) profileHeader.style.display = "block"; // Show profile header for customer
-  if (bossReturn) bossReturn.style.display = "none"; // Ensure boss return link is hidden on customer page
+  if (role) {
+    if (authView) authView.classList.add('hidden');
+    if (customerView) { customerView.classList.remove('hidden'); customerView.classList.add('fade-in'); }
+    if (portalAccessContainer) portalAccessContainer.classList.add('hidden');
+    if (profileHeader) profileHeader.classList.remove('hidden');
+    
+    // ถ้าเป็น Admin (boss) ให้แสดงปุ่มกลับหน้าจัดการ
+    if (role === 'boss' && bossReturn) {
+      bossReturn.classList.remove('hidden');
+    }
 
-  sessionStorage.setItem("userRole", role);
-  sessionStorage.setItem("userName", name);
-  sessionStorage.setItem("userId", userId);
-
-  if (document.getElementById("display-user-name")) {
-    document.getElementById("display-user-name").innerText = "สวัสดี, " + name;
+    if (document.getElementById("display-user-name")) {
+      document.getElementById("display-user-name").innerHTML = `<i class="fas fa-user-circle"></i> ${name}`;
+    }
+  } else {
+    if (authView) authView.classList.remove('hidden');
+    if (customerView) customerView.classList.add('hidden');
   }
 }
 
 function switchCustomerTab(type) {
-  document.getElementById('order-new-section').style.display = type === 'order' ? 'block' : 'none';
-  document.getElementById('order-history-section').style.display = type === 'history' ? 'block' : 'none';
+  const newOrder = document.getElementById('order-new-section');
+  const history = document.getElementById('order-history-section');
+  
+  if (type === 'order') {
+    newOrder.classList.remove('hidden'); newOrder.classList.add('fade-in');
+    history.classList.add('hidden');
+  } else {
+    newOrder.classList.add('hidden');
+    history.classList.remove('hidden'); history.classList.add('fade-in');
+  }
+
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + type).classList.add('active');
   if (type === 'history') loadCustomerJobs();
@@ -246,41 +299,52 @@ async function handleResetPassword(type) {
       alert(result.message);
     }
   } catch (e) {
+    console.error("Register Error:", e);
     alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
   }
 }
 
 function checkAuth() {
-  // ปิดระบบ Login สำหรับ Demo: บังคับเข้าหน้า Admin ทันที
-  const role = "boss";
-  const name = "เจ้าของร้าน (Demo)";
-  const userId = "ADMIN-001";
+  const role = sessionStorage.getItem("userRole") || localStorage.getItem("userRole");
+  const name = sessionStorage.getItem("userName") || localStorage.getItem("userName");
 
   const loginOverlay = document.getElementById("login-overlay");
   const mainContent = document.getElementById("main-content");
   const tailorView = document.getElementById("tailor-view");
 
-  if (loginOverlay) loginOverlay.style.display = "none";
-  if (mainContent) mainContent.style.display = "block";
-  if (tailorView) tailorView.style.display = "block";
-  
-  sessionStorage.setItem("userRole", role);
-  sessionStorage.setItem("userName", name);
-  sessionStorage.setItem("userId", userId);
-
-  // ควบคุมการแสดงผลตามสิทธิ์ (role is hardcoded to 'boss' here, so boss-only elements will show)
-  document.querySelectorAll('.boss-only').forEach(el => el.style.setProperty('display', 'block'));
-  document.getElementById('tab-stock')?.style.display = 'block';
-  document.getElementById('tab-users')?.style.display = 'block';
-  document.getElementById('tab-payroll')?.style.display = 'block'; // Ensure payroll tab is visible
-  document.getElementById('tab-pl-report')?.style.display = 'block'; // Ensure P/L report tab is visible
-
-  loadJobs('pending');
+  if (role === 'boss' || role === 'tailor') {
+    if (loginOverlay) loginOverlay.classList.add('hidden');
+    if (mainContent) { mainContent.classList.remove('hidden'); mainContent.classList.add('fade-in'); }
+    if (tailorView) tailorView.classList.remove('hidden');
+    
+    // จัดการการแสดงผลตามสิทธิ์
+    const isBoss = role === 'boss';
+    document.querySelectorAll('.boss-only').forEach(el => {
+        if (isBoss) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+    });
+    
+    loadJobs('pending');
+  } else {
+    if (loginOverlay) { loginOverlay.classList.remove('hidden'); loginOverlay.style.display = 'flex'; }
+    if (mainContent) mainContent.classList.add('hidden');
+  }
 }
 
 async function loadCustomerJobs() {
   const container = document.getElementById("my-jobs-list");
   const userId = sessionStorage.getItem("userId");
+
+  // แจ้งเตือนหากยังไม่ได้ตั้งค่า SCRIPT_URL
+  if (SCRIPT_URL.includes("ใส่_URL_ที่ได้จาก_Apps_Script_ตรงนี้")) {
+    if (container) container.innerHTML = `
+      <div class="job-card" style="border: 2px dashed var(--warning); text-align: center;">
+        <p>⚠️ <b>ระบบยังไม่ได้เชื่อมต่อฐานข้อมูล</b></p>
+        <small>กรุณาตั้งค่า SCRIPT_URL ในไฟล์ script.js และ Deploy Apps Script</small>
+      </div>`;
+    return;
+  }
+
   if (!container || !userId) return;
   
   container.innerHTML = "<p>กำลังโหลดข้อมูลงานของคุณ...</p>";
@@ -299,12 +363,51 @@ async function loadCustomerJobs() {
     container.innerHTML = myJobs.map(job => `
       <div class="job-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <span class="status-badge ${job.status}">${job.status}</span>
+          <span class="status-badge ${job.status}">
+            ${job.status === 'pending' ? 'รอรับงาน' : 
+              job.status === 'accepted' ? 'รับงานแล้ว' : 
+              job.status === 'sewing' ? 'กำลังเย็บ' : 
+              job.status === 'finished' ? 'เสร็จแล้ว' : 'ยกเลิกแล้ว'}
+          </span>
           <small>ID: ${job.rn}</small>
         </div>
         <h3>${job.job_detail}</h3>
         <p><strong>งบประมาณ:</strong> ฿${Number(job.budget).toLocaleString()}</p>
         <p><strong>ช่างผู้ดูแล:</strong> ${job.tailor_name || 'รอดำเนินการ'}</p>
+        
+        ${job.progress_photo ? `
+          <div style="margin-top: 10px;">
+            <a href="${job.progress_photo}" target="_blank" class="btn-demo" style="border-style: solid; font-size: 12px; padding: 8px;">
+              <i class="fas fa-camera"></i> ดูรูปความคืบหน้างานเย็บ
+            </a>
+          </div>
+        ` : ''}
+
+        ${job.status === 'pending' ? `
+          <button class="btn-logout" 
+                  style="width: 100%; margin-top: 10px; border-color: var(--warning); color: var(--warning);" 
+                  onclick="cancelOrder('${job.id}')">
+            <i class="fas fa-times-circle"></i> ยกเลิกการจ้างงาน
+          </button>
+        ` : ''}
+
+        ${job.status === 'finished' && !job.rating ? `
+          <button class="btn-primary" 
+                  style="width: 100%; margin-top: 10px; background: var(--success);" 
+                  onclick="confirmAndRateJob('${job.id}')">
+            <i class="fas fa-star"></i> ยืนยันรับงานและให้คะแนน
+          </button>
+          <button class="btn-logout" 
+                  style="width: 100%; margin-top: 5px; border-color: var(--secondary); color: var(--secondary);" 
+                  onclick="requestRevision('${job.id}')">
+            <i class="fas fa-tools"></i> ขอแก้ไขงาน/ส่งเคลม
+          </button>
+        ` : job.rating ? `
+          <div class="rating-stars">
+            ${'★'.repeat(Number(job.rating))}${'☆'.repeat(5 - Number(job.rating))}
+            <span style="color: var(--text-sub); font-size: 12px; margin-left: 5px;">(${job.rating}/5)</span>
+          </div>
+        ` : ''}
       </div>
     `).join('');
   } catch (e) { container.innerHTML = "<p>ไม่สามารถโหลดข้อมูลได้</p>"; }
@@ -366,6 +469,8 @@ function switchTab(type) {
   const searchContainer = document.querySelector('.search-container');
   const perfSections = document.querySelectorAll('.performance-section');
   const userSection = document.getElementById('user-management-section');
+  const plSection = document.getElementById('pl-report-section');
+  const analysisSection = document.getElementById('rejected-analysis-section');
   
   if (type === 'stock') {
     jobList.style.display = 'none';
@@ -374,18 +479,40 @@ function switchTab(type) {
       if (el.id !== 'user-management-section') el.style.display = 'block';
     });
     if (userSection) userSection.style.display = 'none';
+    if (plSection) plSection.style.display = 'none';
+    if (analysisSection) analysisSection.style.display = 'none';
     loadJobs('pending'); // ดึงข้อมูลเพื่อให้สต๊อกเป็นปัจจุบัน
   } else if (type === 'users') {
     jobList.style.display = 'none';
     searchContainer.style.display = 'none';
     perfSections.forEach(el => el.style.display = 'none');
     if (userSection) userSection.style.display = 'block';
+    if (plSection) plSection.style.display = 'none';
+    if (analysisSection) analysisSection.style.display = 'none';
     renderUsers(currentViewData.users);
+  } else if (type === 'pl-report') {
+    jobList.style.display = 'none';
+    searchContainer.style.display = 'none';
+    perfSections.forEach(el => el.style.display = 'none');
+    if (userSection) userSection.style.display = 'none';
+    if (plSection) plSection.style.display = 'block';
+    if (analysisSection) analysisSection.style.display = 'none';
+    renderPLReport(currentViewData.jobs);
+  } else if (type === 'analysis') {
+    jobList.style.display = 'none';
+    searchContainer.style.display = 'none';
+    perfSections.forEach(el => el.style.display = 'none');
+    if (userSection) userSection.style.display = 'none';
+    if (plSection) plSection.style.display = 'none';
+    if (analysisSection) analysisSection.style.display = 'block';
+    renderRejectedAnalysis(currentViewData.jobs);
   } else {
     jobList.style.display = 'grid';
     searchContainer.style.display = 'block';
     perfSections.forEach(el => el.style.display = 'none');
     if (userSection) userSection.style.display = 'none';
+    if (plSection) plSection.style.display = 'none';
+    if (analysisSection) analysisSection.style.display = 'none';
     loadJobs(type);
   }
 }
@@ -655,14 +782,16 @@ function updateDashboard(jobs) {
   setVal('count-pending', pendingCount);
   setVal('count-active', jobs.filter(j => j.status === 'accepted' || j.status === 'sewing').length);
   setVal('count-finished', finishedJobs.length);
+  setVal('count-rejected', jobs.filter(j => j.status === 'rejected').length);
 
   // ระบบแจกแจงค่าแรงช่าง
   const tailorStats = {};
   finishedJobs.forEach(j => {
     const name = j.tailor_name || "ไม่ระบุช่าง";
-    if (!tailorStats[name]) tailorStats[name] = { count: 0, total: 0 };
+    if (!tailorStats[name]) tailorStats[name] = { count: 0, total: 0, material: 0 };
     tailorStats[name].count++;
     tailorStats[name].total += (Number(j.budget) || 0);
+    tailorStats[name].material += (Number(j.material_cost) || 0);
   });
 
   const perfDiv = document.getElementById('tailor-performance');
@@ -675,8 +804,9 @@ function updateDashboard(jobs) {
               <th>ชื่อช่าง</th>
               <th>งานเสร็จ</th>
               <th>ยอดรวม</th>
+              <th>ต้นทุนวัสดุ</th>
               <th>ค่าแรง (40%)</th>
-              <th>กำไรร้าน (60%)</th>
+              <th>กำไรร้านสุทธิ</th>
             </tr>
           </thead>
           <tbody>
@@ -685,8 +815,9 @@ function updateDashboard(jobs) {
                 <td><strong>${name}</strong></td>
                 <td>${stat.count}</td>
                 <td>฿${stat.total.toLocaleString()}</td>
+                <td class="text-warning">฿${stat.material.toLocaleString()}</td>
                 <td class="text-success">฿${(stat.total * 0.4).toLocaleString()}</td>
-                <td class="text-primary">฿${(stat.total * 0.6).toLocaleString()}</td>
+                <td class="text-primary">฿${((stat.total * 0.6) - stat.material).toLocaleString()}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -694,6 +825,105 @@ function updateDashboard(jobs) {
       </div>
     `;
   }
+}
+
+function renderPLReport(jobs) {
+  const container = document.getElementById('pl-report-section');
+  if (!container) return;
+
+  const finishedJobs = jobs.filter(j => j.status === 'finished');
+  
+  // จัดกลุ่มข้อมูลตามเดือน (Monthly Grouping)
+  const monthlyData = finishedJobs.reduce((acc, job) => {
+    const date = new Date(job.created_at);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (!acc[monthKey]) {
+      acc[monthKey] = { revenue: 0, labor: 0, material: 0, net: 0 };
+    }
+    
+    const budget = Number(job.budget) || 0;
+    const material = Number(job.material_cost) || 0;
+    const labor = budget * 0.4; // ค่าแรงช่าง 40%
+    
+    acc[monthKey].revenue += budget;
+    acc[monthKey].labor += labor;
+    acc[monthKey].material += material;
+    acc[monthKey].net += (budget * 0.6) - material; // กำไรสุทธิของร้าน (60% - ต้นทุนวัสดุ)
+    
+    return acc;
+  }, {});
+
+  const sortedMonths = Object.keys(monthlyData).sort().reverse();
+
+  container.innerHTML = `
+    <div class="table-container">
+      <table class="stats-table">
+        <thead>
+          <tr>
+            <th>เดือน/ปี</th>
+            <th>รายได้รวม</th>
+            <th>ค่าแรงช่าง (40%)</th>
+            <th>ต้นทุนวัสดุ</th>
+            <th>กำไรสุทธิร้าน</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sortedMonths.map(m => {
+            const data = monthlyData[m];
+            const [year, month] = m.split('-');
+            const monthLabel = new Date(year, month - 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+            return `
+              <tr>
+                <td><strong>${monthLabel}</strong></td>
+                <td>฿${data.revenue.toLocaleString()}</td>
+                <td class="text-warning">฿${data.labor.toLocaleString()}</td>
+                <td class="text-warning">฿${data.material.toLocaleString()}</td>
+                <td class="text-primary" style="font-size: 1.1em;">฿${data.net.toLocaleString()}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderRejectedAnalysis(jobs) {
+  const container = document.getElementById('rejected-list');
+  if (!container) return;
+
+  const rejectedJobs = jobs.filter(j => j.status === 'rejected');
+
+  if (rejectedJobs.length === 0) {
+    container.innerHTML = "<p class='no-data'>ไม่มีประวัติการปฏิเสธงาน</p>";
+    return;
+  }
+
+  container.innerHTML = `
+    <table class="stats-table">
+      <thead>
+        <tr>
+          <th>เลขที่งาน</th>
+          <th>ลูกค้า</th>
+          <th>ประเภท</th>
+          <th>งบประมาณ</th>
+          <th>สาเหตุที่ปฏิเสธ</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rejectedJobs.map(j => `
+          <tr>
+            <td><strong>${j.rn}</strong></td>
+            <td>${j.customer_name}</td>
+            <td>${j.job_category}</td>
+            <td>฿${Number(j.budget).toLocaleString()}</td>
+            <td style="color: var(--warning);">${j.cancellation_reason || 'ไม่ได้ระบุ'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
 }
 
 function renderJobs(jobsToRender) { // Renamed parameter for clarity
@@ -711,30 +941,54 @@ function renderJobs(jobsToRender) { // Renamed parameter for clarity
   const endIndex = startIndex + JOBS_PER_PAGE;
   const paginatedJobs = jobsToRender.slice(startIndex, endIndex);
 
-  container.innerHTML = paginatedJobs.map(job => `
-    <div class="job-card">
+  container.innerHTML = paginatedJobs.map(job => {
+    // แปลงข้อมูลสัดส่วนจาก JSON String เป็น Object
+    let m = { chest: '-', waist: '-', length: '-' };
+    try {
+      if (job.measurements) m = JSON.parse(job.measurements);
+    } catch (e) { console.error("Error parsing measurements", e); }
+
+    return `
+    <div class="job-card fade-in">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <span class="status-badge ${job.status}">${job.status}</span>
         <small>${job.created_at ? job.created_at.split('T')[0] : ''}</small>
       </div>
       <h3>${job.job_detail}</h3>
+
+      <!-- ส่วนแสดงสัดส่วนสำหรับช่าง (Technical Specs) -->
+      <div class="measurement-spec">
+        <div class="spec-item"><strong>อก</strong> <span class="spec-val">${m.chest || '-'}</span></div>
+        <div class="spec-item"><strong>เอว</strong> <span class="spec-val">${m.waist || '-'}</span></div>
+        <div class="spec-item"><strong>ยาว</strong> <span class="spec-val">${m.length || '-'}</span></div>
+      </div>
+
       <p><strong>ผู้โพสต์:</strong> ${job.customer_name}</p>
       <p><strong>ติดต่อ:</strong> ${job.customer_phone || '-'}</p>
       <p><strong>งบประมาณ:</strong> ฿${job.budget}</p>
       ${renderActionButtons(job)}
     </div>
-  `).join('');
+    `;
+  }).join('');
 
   renderPaginationControls(jobsToRender.length, totalPages);
 }
 
 function renderActionButtons(job) {
   if (job.status === 'pending') {
-    return `<button class="btn-primary" onclick="updateStatus('${job.id}', 'accepted')">รับงานนี้</button>`;
+    return `
+      <div style="display:flex; gap:10px;">
+        <button class="btn-primary" style="flex:2" onclick="updateStatus('${job.id}', 'accepted')"><i class="fas fa-check"></i> รับงาน</button>
+        <button class="btn-logout" style="flex:1" onclick="updateStatus('${job.id}', 'rejected')"><i class="fas fa-times"></i> ปฏิเสธ</button>
+      </div>
+    `;
   } else if (job.status === 'accepted') {
-    return `<button class="btn-primary" style="background:var(--success)" onclick="updateStatus('${job.id}', 'sewing')">เริ่มเย็บ</button>`;
+    return `<button class="btn-primary" style="background:var(--success)" onclick="updateStatus('${job.id}', 'sewing')"><i class="fas fa-cut"></i> เริ่มขั้นตอนตัดเย็บ</button>`;
   } else if (job.status === 'sewing') {
-    return `<button class="btn-primary" style="background:var(--secondary)" onclick="updateStatus('${job.id}', 'finished')">แจ้งงานเสร็จ</button>`;
+    return `
+      <button class="btn-primary" style="background:var(--secondary); margin-bottom:5px;" onclick="uploadProgressPhoto('${job.id}')"><i class="fas fa-camera"></i> อัปเดตรูปความคืบหน้า</button>
+      <button class="btn-primary" style="background:var(--primary-dark)" onclick="updateStatus('${job.id}', 'finished')"><i class="fas fa-check-double"></i> แจ้งงานเสร็จสมบูรณ์</button>
+    `;
   }
   return '';
 }
@@ -789,6 +1043,12 @@ function goToPage(pageNumber) {
 
 async function updateStatus(id, newStatus) {
   let payload = { action: "update_status", id: id, status: newStatus };
+
+  if (newStatus === 'rejected') {
+    const reason = prompt("กรุณาระบุสาเหตุที่ปฏิเสธงานนี้ (ข้อมูลนี้จะถูกเก็บไว้เพื่อพัฒนาธุรกิจ):");
+    if (reason === null) return; // กดยกเลิก
+    payload.cancellation_reason = reason || "ไม่ระบุสาเหตุ";
+  }
 
   if (newStatus === 'accepted') {
     // ใช้ชื่อจาก Session อัตโนมัติเพื่อป้องกันพนักงานพิมพ์ชื่อผิด
@@ -899,6 +1159,35 @@ async function handleChangePassword() {
   } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
 }
 
+// ฟังก์ชันยืนยันรับงานและให้คะแนน
+async function confirmAndRateJob(id) {
+  const rating = prompt("งานของคุณเสร็จเรียบร้อยแล้ว!\nกรุณาให้คะแนนความพึงพอใจ (1-5 ดาว):", "5");
+  
+  if (rating === null) return;
+  const ratingNum = parseInt(rating);
+  
+  if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+    return alert("กรุณาระบุคะแนนเป็นตัวเลข 1 ถึง 5 เท่านั้นครับ");
+  }
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ 
+        action: "update_status", 
+        id: id, 
+        status: "finished",
+        rating: ratingNum 
+      })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      alert("ขอบคุณสำหรับคะแนนความพึงพอใจครับ!");
+      loadCustomerJobs();
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
 // ระบบกดค้าง 3 วินาทีสำหรับปุ่มลับ
 let portalTimer;
 function initPortalLongPress() {
@@ -931,3 +1220,63 @@ function togglePortalDropdown() {
 }
 
 // เรียกใช้งานระบบกดค้างเมื่อโหลดหน้าเว็บ
+
+// --- ระบบ Scroll Reveal โดยใช้ Intersection Observer ---
+function initScrollReveal() {
+  const observerOptions = {
+    threshold: 0.15, // เริ่มทำงานเมื่อองค์ประกอบปรากฏในจอ 15%
+    rootMargin: "0px 0px -50px 0px" // ให้เริ่มแสดงก่อนถึงขอบล่างของจอนิดหน่อยเพื่อให้ดูเป็นธรรมชาติ
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('active');
+      }
+    });
+  }, observerOptions);
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+}
+
+// ฟังก์ชันช่วยเติมข้อมูลสำหรับ Demo เพื่อความสะดวกในการทดสอบ
+function fillDemoLogin(type) {
+  if (type === 'customer') {
+    document.getElementById('login-username').value = "admin";
+    document.getElementById('login-password').value = "1234";
+    loginCustomer();
+  } else {
+    document.getElementById('boss-username').value = "admin";
+    document.getElementById('boss-password').value = "1234";
+    loginBoss();
+  }
+}
+
+// ฟังก์ชันยกเลิกงานพร้อมระบุเหตุผล
+async function cancelOrder(id) {
+  const reason = prompt("กรุณาระบุเหตุผลในการยกเลิกงานจ้างนี้ (เช่น เปลี่ยนใจ, ได้ร้านอื่นแล้ว):");
+  
+  if (reason === null) return; // กดยกเลิกใน prompt
+  if (reason.trim() === "") return alert("กรุณาระบุเหตุผลเพื่อให้เรานำไปปรับปรุงบริการครับ");
+
+  if (!confirm("ยืนยันการยกเลิกงานจ้างนี้ใช่หรือไม่?")) return;
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ 
+        action: "update_status", 
+        id: id, 
+        status: "cancelled",
+        cancellation_reason: reason 
+      })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      alert("ยกเลิกงานจ้างเรียบร้อยแล้ว");
+      loadCustomerJobs();
+    } else {
+      alert("ไม่สามารถยกเลิกได้: " + res.message);
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
