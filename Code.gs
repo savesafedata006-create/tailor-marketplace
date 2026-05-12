@@ -259,7 +259,61 @@ function doPost(e) {
     return createResponse({ status: "success" });
   }
 
-  // 11. อัปเดตสัดส่วนลูกค้า (Update Measurements)
+  // 11. เพิ่มรายการสต๊อก
+  if (content.action === "add_stock") {
+    const sSheet = ss.getSheetByName("STOCK");
+    const itemId = "STK-" + Utilities.getUuid().slice(0, 6).toUpperCase();
+    sSheet.appendRow([itemId, content.category, content.item_name, Number(content.quantity), content.unit, Number(content.unit_price), Number(content.min_threshold) || 5, new Date()]);
+    return createResponse({ status: "success", item_id: itemId });
+  }
+
+  // 12. อัปเดตโปรไฟล์ลูกค้า
+  if (content.action === "update_profile") {
+    const uSheet = ss.getSheetByName("USERS");
+    const uData = uSheet.getDataRange().getValues();
+    for (let i = 1; i < uData.length; i++) {
+      if (uData[i][0].toString() === content.user_id.toString()) {
+        uSheet.getRange(i + 1, 5).setValue(content.full_name);
+        uSheet.getRange(i + 1, 6).setValue(content.phone);
+        if (content.line) uSheet.getRange(i + 1, 7).setValue(content.line);
+        return createResponse({ status: "success" });
+      }
+    }
+    return createResponse({ status: "error", message: "ไม่พบผู้ใช้" });
+  }
+
+  // 13. ลูกค้าชำระเงินงวดสุดท้าย
+  if (content.action === "pay_final_price") {
+    const sheet = ss.getSheetByName("JOBS");
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] == content.id) {
+        sheet.getRange(i + 1, 9).setValue("paid");
+        logEvent(ss, "CUSTOMER", data[i][2], "PAY_FINAL", `ชำระเงินงาน ${data[i][1]} สำเร็จ`, "success");
+        break;
+      }
+    }
+    return createResponse({ status: "success" });
+  }
+
+  // 14. บอสกำหนดค่าใช้จ่ายเพิ่มเติม
+  if (content.action === "update_additional_cost") {
+    const sheet = ss.getSheetByName("JOBS");
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const budgetIdx = headers.indexOf("budget");
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] == content.id) {
+        const finalPrice = (Number(data[i][budgetIdx]) || 0) + Number(content.additional_cost);
+        sheet.getRange(i + 1, 8).setValue(finalPrice);
+        logEvent(ss, "BOSS", "admin", "UPDATE_COST", `อัปเดตค่าใช้จ่ายเพิ่มเติมงาน ${data[i][1]}: +฿${content.additional_cost}`, "success");
+        break;
+      }
+    }
+    return createResponse({ status: "success" });
+  }
+
+  // 15. อัปเดตสัดส่วนลูกค้า (Update Measurements)
   if (content.action === "update_measurements") {
     const mSheet = ss.getSheetByName("MEASUREMENTS");
     const mData = mSheet.getDataRange().getValues();
@@ -336,4 +390,96 @@ function logEvent(ss, uId, uName, action, details, status) {
 
 function createResponse(payload) {
   return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ===================================================================
+// ฟังก์ชันเพิ่มข้อมูลตัวอย่าง — รัน 1 ครั้งจาก Apps Script Editor
+// Run this once from the Apps Script editor to seed sample data.
+// ===================================================================
+function seedSampleData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  doGet({}); // ensure all sheets exist
+
+  // ── 1. USERS (5 ชุด: 1 boss + 2 tailor + 2 customer) ───────────────
+  const uSheet = ss.getSheetByName("USERS");
+  const existingUsers = uSheet.getDataRange().getValues().slice(1).map(r => r[1]);
+  const sampleUsers = [
+    ["U-TAILOR-01", "somchai",   "pass1234", "tailor",   "สมชาย มีฝีมือ",       "0891234567"],
+    ["U-TAILOR-02", "niran",     "pass1234", "tailor",   "นิรันดร์ ช่างเย็บ",    "0892345678"],
+    ["U-CUST-01",   "aranya",    "pass1234", "customer", "อรัญญา สวยงาม",        "0812222111"],
+    ["U-CUST-02",   "wanchai",   "pass1234", "customer", "วันชัย ใส่สูท",         "0813333222"],
+    ["U-CUST-03",   "nattaya",   "pass1234", "customer", "ณัฏฐยา ชุดไทย",        "0814444333"],
+  ];
+  sampleUsers.forEach(u => {
+    if (!existingUsers.includes(u[1])) uSheet.appendRow(u);
+  });
+
+  // ── 2. STOCK (5 ชุด: หมวดหมู่หลากหลาย) ────────────────────────────
+  const sSheet = ss.getSheetByName("STOCK");
+  const existingStock = sSheet.getDataRange().getValues().slice(1).map(r => r[0]);
+  const now = new Date();
+  const sampleStock = [
+    ["STK-S01", "ผ้า",     "ผ้าวูลเนื้อดี",        80,  "เมตร",   650,  15, now],
+    ["STK-S02", "ผ้า",     "ผ้าไหมไทย",             30,  "เมตร",   1200, 5,  now],
+    ["STK-S03", "ด้าย",   "ด้ายสีดำ",              200, "ม้วน",   35,   20, now],
+    ["STK-S04", "กระดุม", "กระดุมสูทสีเงิน",       500, "เม็ด",   8,    50, now],
+    ["STK-S05", "ซิป",    "ซิปกระเป๋าสีทอง 20cm", 150, "เส้น",  25,   30, now],
+  ];
+  sampleStock.forEach(s => {
+    if (!existingStock.includes(s[0])) sSheet.appendRow(s);
+  });
+
+  // ── 3. JOBS (5 ชุด: สถานะและประเภทชุดที่หลากหลาย) ─────────────────
+  const jSheet = ss.getSheetByName("JOBS");
+  const existingJobs = jSheet.getDataRange().getValues().slice(1).map(r => r[0]);
+  const baseTime = new Date("2026-05-01T09:00:00");
+  const sampleJobs = [
+    // [id, rn, customer_name, phone, line, detail, category, budget, status, tailor_name, user_id, created_at, cancel_reason, rating, material_cost, measurements, progress_photo, dispute_notes]
+    [
+      "JOB-DEMO-001", "RN-1001-DEMO",
+      "อรัญญา สวยงาม", "0812222111", "@aranya_line",
+      "ตัดชุดเดรสผ้าไหมสีแดง สำหรับงานแต่งงาน ยาวคลุมเข่า ติดลูกไม้ที่ชายล่าง",
+      "เดรส", 4500, "finished", "somchai",
+      "U-CUST-01", new Date("2026-04-20T10:00:00"),
+      "", 5, 1200, "อก38 เอว30 ยาว46", "", ""
+    ],
+    [
+      "JOB-DEMO-002", "RN-1002-DEMO",
+      "วันชัย ใส่สูท", "0813333222", "@wanchai_biz",
+      "ตัดสูท 2 ชิ้น (เสื้อ+กางเกง) ผ้าวูล สีกรมท่า ทรงสลิม พร้อมกระเป๋า 4 ใบ",
+      "สูท", 8500, "sewing", "niran",
+      "U-CUST-02", new Date("2026-05-03T11:30:00"),
+      "", 0, 1950, "อก42 เอว34 ยาว31", "", ""
+    ],
+    [
+      "JOB-DEMO-003", "RN-1003-DEMO",
+      "ณัฏฐยา ชุดไทย", "0814444333", "@nattaya_th",
+      "ตัดชุดผ้าไทยแบบจิตรลดา สีเขียวมรกต พร้อมสไบ 2 ชุด สำหรับงานราชการ",
+      "อื่นๆ", 6200, "accepted", "somchai",
+      "U-CUST-03", new Date("2026-05-07T09:00:00"),
+      "", 0, 2400, "อก36 เอว28 ยาว44", "", ""
+    ],
+    [
+      "JOB-DEMO-004", "RN-1004-DEMO",
+      "วันชัย ใส่สูท", "0813333222", "@wanchai_biz",
+      "ตัดกางเกงสแล็คขายาว ผ้า Chino สีกากี 2 ตัว ทรงตรง",
+      "กางเกง", 1800, "pending", "",
+      "U-CUST-02", new Date("2026-05-10T14:00:00"),
+      "", 0, 0, "เอว34 สะโพก40 ยาว31", "", ""
+    ],
+    [
+      "JOB-DEMO-005", "RN-1005-DEMO",
+      "อรัญญา สวยงาม", "0812222111", "@aranya_line",
+      "ตัดกระโปรงบานครึ่งวงกลม ผ้าชีฟองสีฟ้า ยาวคลุมเข่า ติดซิปซ่อนข้างหลัง",
+      "กระโปรง", 1500, "rejected", "",
+      "U-CUST-01", new Date("2026-05-09T16:00:00"),
+      "วัสดุที่ลูกค้าระบุไม่มีในสต๊อก กรุณาติดต่อใหม่ภายใน 7 วัน", 0, 0, "เอว28 สะโพก38 ยาว22", "", ""
+    ],
+  ];
+  sampleJobs.forEach(j => {
+    if (!existingJobs.includes(j[0])) jSheet.appendRow(j);
+  });
+
+  Logger.log("✅ seedSampleData สำเร็จ: เพิ่มข้อมูลตัวอย่างแล้ว");
+  SpreadsheetApp.getUi().alert("seedSampleData เสร็จสิ้น!\nเพิ่มข้อมูลตัวอย่างแล้ว\nโปรดรีเฟรชแอปเพื่อดูผล");
 }

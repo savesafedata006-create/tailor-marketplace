@@ -120,8 +120,14 @@
                 <li>เลือกหักสต๊อกวัสดุ</li>
                 <li>อัปโหลดรูปความคืบหน้า</li>
                 <li>แจ้งงานเสร็จสมบูรณ์</li>
-                <li>📊 <b>Boss only:</b> สต๊อก / P&L / จัดการสิทธิ์ / เงินเดือน</li>
+                <li>📊 <b>Boss only:</b> ภาพรวม / สต๊อก / ผลงานช่าง / การเงิน / P&L / วิเคราะห์</li>
               </ul>
+              <div style="margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:5px; font-size:11px;">
+                <a href="tailor.html" onclick="sessionStorage.setItem('autoTab','dashboard'); return true;" style="background:#fef9c3; color:#854d0e; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-tachometer-alt"></i> ภาพรวม</a>
+                <a href="tailor.html" onclick="sessionStorage.setItem('autoTab','pending'); return true;" style="background:#dcfce7; color:#166534; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-inbox"></i> งาน</a>
+                <a href="tailor.html" onclick="sessionStorage.setItem('autoTab','stock'); return true;" style="background:#dbeafe; color:#1e40af; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-warehouse"></i> สต๊อก</a>
+                <a href="tailor.html" onclick="sessionStorage.setItem('autoTab','payroll'); return true;" style="background:#fce7f3; color:#9d174d; padding:4px 6px; border-radius:6px; text-decoration:none; text-align:center;"><i class="fas fa-money-check-alt"></i> การเงิน</a>
+              </div>
             </div>
           </div>
 
@@ -169,6 +175,41 @@
               <i class="fas fa-arrow-right" style="color:var(--text-sub);"></i>
               <span class="status-badge low-stock">ถูกยกเลิก / ปฏิเสธ</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 5 Admin Modules ===== -->
+      <div class="sop-section">
+        <div class="sop-header">
+          <i class="fas fa-th-large"></i>
+          <h3>5 โมดูลหลักระบบจัดการร้าน (Boss)</h3>
+          <a href="tailor.html" class="role-tag role-boss" style="text-decoration:none; padding: 5px 12px;">เข้าระบบ <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="wi-step" style="border-left-color:#6366f1;">
+            <h4 style="color:#6366f1;"><i class="fas fa-tachometer-alt"></i> ภาพรวม (Dashboard) <span style="background:#6366f1;">Tab 1</span></h4>
+            <p style="font-size:13px; color:var(--text-sub);">สรุปงานวันนี้ · รายได้รวม · สถิติ · กราฟรายได้รายเดือน · สัดส่วนประเภทชุด · มูลค่าสต๊อก · ค่าแรงช่าง 40/60</p>
+          </div>
+          <div class="wi-step" style="border-left-color:#10b981;">
+            <h4 style="color:#10b981;"><i class="fas fa-inbox"></i> งาน (Jobs) <span style="background:#10b981;">Tab 2-3</span></h4>
+            <p style="font-size:13px; color:var(--text-sub);">งานใหม่รอรับ · งานกำลังเย็บ · ค้นหา/กรอง · Pagination · รับ/ปฏิเสธ · อัปเดตสถานะ · รูปความคืบหน้า</p>
+          </div>
+          <div class="wi-step" style="border-left-color:#3b82f6;">
+            <h4 style="color:#3b82f6;"><i class="fas fa-warehouse"></i> สต๊อกสินค้า (Inventory) <span style="background:#3b82f6;">Tab 4</span></h4>
+            <p style="font-size:13px; color:var(--text-sub);">รายการวัสดุ · จำนวน/ราคาต่อหน่วย · แจ้งเตือนของใกล้หมด · หักสต๊อกเมื่อรับงาน · มูลค่าคลังรวม</p>
+          </div>
+          <div class="wi-step" style="border-left-color:#f59e0b;">
+            <h4 style="color:#f59e0b;"><i class="fas fa-users"></i> ผลงานช่าง (Performance) <span style="background:#f59e0b;">Tab 5</span></h4>
+            <p style="font-size:13px; color:var(--text-sub);">งานเสร็จแต่ละคน · ยอดรวม · ค่าแรง 40% · ต้นทุนวัสดุ · กำไรสุทธิต่อช่าง</p>
+          </div>
+          <div class="wi-step" style="border-left-color:#ec4899;">
+            <h4 style="color:#ec4899;"><i class="fas fa-money-check-alt"></i> การเงิน (Finance) <span style="background:#ec4899;">Tab 6-7</span></h4>
+            <p style="font-size:13px; color:var(--text-sub);">คำขอเบิกเงินพนักงาน · อนุมัติ/ปฏิเสธ · หักภาษี ณ ที่จ่าย 3% · รายงาน P&L รายเดือน · กำไร-ขาดทุนจริง</p>
+          </div>
+          <div class="wi-step" style="border-left-color:#64748b;">
+            <h4 style="color:#64748b;"><i class="fas fa-search-minus"></i> วิเคราะห์ระบบ (Analysis) <span style="background:#64748b;">Tab 8-9</span></h4>
+            <p style="font-size:13px; color:var(--text-sub);">จัดการสิทธิ์ผู้ใช้ · เพิ่ม/แก้ไขบทบาท · วิเคราะห์สาเหตุปฏิเสธงาน · จุดอ่อนระบบ</p>
           </div>
         </div>
       </div>

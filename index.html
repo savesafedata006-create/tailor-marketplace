@@ -62,19 +62,19 @@
       <div class="steps-grid">
         <div class="step-item reveal" onclick="document.getElementById('auth-view').scrollIntoView({behavior:'smooth'})">
           <div class="step-icon-wrapper"><i class="fas fa-user-plus"></i></div>
-          <p>สมัครสมาชิก / เข้าสู่ระบบ</p>
+          <p>สมัครสมาชิกหรือเข้าสู่ระบบ</p>
         </div>
         <div class="step-item reveal" onclick="switchCustomerTab('order')">
           <div class="step-icon-wrapper"><i class="fas fa-pen-ruler"></i></div>
-          <p>ส่งรายละเอียดงานและงบประมาณ</p>
+          <p>แจ้งรายละเอียดงานและงบประมาณ</p>
         </div>
         <div class="step-item reveal">
           <div class="step-icon-wrapper"><i class="fas fa-scissors"></i></div>
-          <p>รอช่างกดรับงานและเริ่มเย็บ</p>
+          <p>ช่างมืออาชีพรับงานและลงมือตัดเย็บ</p>
         </div>
         <div class="step-item reveal" onclick="switchCustomerTab('history')">
           <div class="step-icon-wrapper"><i class="fas fa-box-open"></i></div>
-          <p>ติดตามสถานะจนเสร็จและรับงาน</p>
+          <p>ติดตามสถานะแบบเรียลไทม์ รับงานเมื่อเสร็จ</p>
         </div>
       </div>
     </section>
@@ -123,6 +123,8 @@
       <div class="tabs">
         <button onclick="switchCustomerTab('order')" class="tab-btn active" id="tab-order">จ้างงานใหม่</button>
         <button onclick="switchCustomerTab('history')" class="tab-btn" id="tab-history">งานของฉัน</button>
+        <button onclick="switchCustomerTab('notifications')" class="tab-btn" id="tab-notifications">แจ้งเตือน</button>
+        <button onclick="switchCustomerTab('profile')" class="tab-btn" id="tab-profile">โปรไฟล์</button>
       </div>
 
       <div id="order-new-section">
@@ -175,6 +177,10 @@
           <label>งบประมาณ (บาท)</label>
           <input type="number" id="budget" placeholder="ระบุงบประมาณ">
         </div>
+        <div class="input-item">
+          <label>แนะนำเพื่อน (ถ้ามี) - เพื่อนคิวทำงานก่อน</label>
+          <input type="text" id="referral_code" placeholder="รหัสแนะนำเพื่อน (ถ้ามี)">
+        </div>
         <button class="btn-primary" onclick="sendData()">
           <i class="fas fa-paper-plane"></i> ส่งงานจ้าง
         </button>
@@ -186,6 +192,25 @@
           <h2><i class="fas fa-history"></i> ติดตามสถานะงาน</h2>
         </div>
         <div id="my-jobs-list" class="job-grid"></div>
+      </div>
+
+      <div id="order-notifications-section" style="display:none;">
+        <div class="section-header">
+          <h2><i class="fas fa-bell"></i> แจ้งเตือน</h2>
+        </div>
+        <div id="notifications-list" class="job-grid"></div>
+      </div>
+
+      <div id="order-profile-section" style="display:none;">
+        <div class="section-header">
+          <h2><i class="fas fa-user"></i> โปรไฟล์ของฉัน</h2>
+        </div>
+        <div class="form-group">
+          <input type="text" id="profile-name" placeholder="ชื่อ-นามสกุล">
+          <input type="tel" id="profile-phone" placeholder="เบอร์โทรศัพท์">
+          <input type="text" id="profile-line" placeholder="Line ID">
+          <button class="btn-primary" onclick="updateProfile()">อัปเดตโปรไฟล์</button>
+        </div>
       </div>
     </section>
 
@@ -229,13 +254,17 @@
       <i class="fas fa-home"></i>
       <span>หน้าหลัก</span>
     </div>
+    <div class="nav-item" onclick="switchCustomerTab('history')">
+      <i class="fas fa-list"></i>
+      <span>งานของฉัน</span>
+    </div>
+    <div class="nav-item" onclick="switchCustomerTab('notifications')">
+      <i class="fas fa-bell"></i>
+      <span>แจ้งเตือน</span>
+    </div>
     <div class="nav-item" onclick="location.href='present.html'">
       <i class="fas fa-project-diagram"></i>
       <span>วิธีใช้งาน</span>
-    </div>
-    <div class="nav-item" onclick="location.href='portfolio.html'">
-      <i class="fas fa-images"></i>
-      <span>ผลงาน</span>
     </div>
     <div class="nav-item" onclick="location.href='contact.html'">
       <i class="fas fa-phone"></i>

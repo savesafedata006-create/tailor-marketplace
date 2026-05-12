@@ -1,6 +1,61 @@
-// เชื่อมต่อกับ Google Sheets: https://docs.google.com/spreadsheets/d/1p2EFyCT75y_u9VKmeGIhodDWXZqGEPA3tzXWmPibdbk/edit
-// แทนที่ค่าด้านล่างนี้ด้วย Web App URL ที่ได้จากขั้นตอนการ Deploy Google Apps Script
+// เชื่อมต่อกับ Google Sheets
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyHLnvQmRFTx6Qc9PYFcVFLj6ACZ_j6UX-Zci5iqwTtUaDQ618xsEMpo-7Qddc8bGSbg/exec";
+
+// ===== TOAST NOTIFICATION SYSTEM =====
+function showToast(message, type = 'info', duration = 3500) {
+  const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle', warning: 'fa-exclamation-triangle' };
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<i class="fas ${icons[type]||icons.info}"></i><span>${message}</span>`;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('show')));
+  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 350); }, duration);
+}
+
+// ===== ACTION MODAL (replaces browser prompt/confirm/alert) =====
+function showActionModal({ title, body, confirmLabel = 'ยืนยัน', cancelLabel = 'ยกเลิก', showCancel = true }) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('__action_modal');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = '__action_modal';
+    overlay.className = 'action-modal-overlay';
+    overlay.innerHTML = `
+      <div class="action-modal-box">
+        <h3>${title}</h3>
+        <div>${body}</div>
+        <div class="modal-actions">
+          <button class="btn-primary" id="__modal_ok">${confirmLabel}</button>
+          ${showCancel ? `<button class="btn-secondary" id="__modal_cancel">${cancelLabel}</button>` : ''}
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const closeWith = (val) => { overlay.remove(); resolve(val); };
+    document.getElementById('__modal_ok').onclick = () => {
+      const inp = document.getElementById('__modal_input');
+      closeWith(inp ? inp.value.trim() : true);
+    };
+    const cancelBtn = document.getElementById('__modal_cancel');
+    if (cancelBtn) cancelBtn.onclick = () => closeWith(null);
+    overlay.onclick = (e) => { if (e.target === overlay) closeWith(null); };
+    setTimeout(() => document.getElementById('__modal_input')?.focus(), 80);
+  });
+}
+function selectModalStar(n) {
+  document.getElementById('__modal_input').value = n;
+  document.querySelectorAll('.star-btn').forEach((b, i) => { b.textContent = i < n ? '★' : '☆'; b.classList.toggle('lit', i < n); });
+}
+const _starBody = (label = 'กรุณาเลือกคะแนน 1–5 ดาว') =>
+  `<p style="font-size:13px;color:var(--text-sub);margin-bottom:8px;">${label}</p>
+   <div class="star-rating-row">${[1,2,3,4,5].map(i=>`<button class="star-btn" onclick="selectModalStar(${i})">☆</button>`).join('')}</div>
+   <input type="hidden" id="__modal_input" value="">`;
+const _textareaBody = (label, placeholder) =>
+  `<label style="font-size:13px;color:var(--text-sub);">${label}</label>
+   <textarea id="__modal_input" rows="3" placeholder="${placeholder}" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #cbd5e1;border-radius:12px;font-family:Kanit,sans-serif;font-size:14px;margin-top:8px;background:#f8fafc;resize:vertical;"></textarea>`;
+const _inputBody = (label, placeholder, type = 'text', defaultVal = '') =>
+  `<label style="font-size:13px;color:var(--text-sub);">${label}</label>
+   <input type="${type}" id="__modal_input" placeholder="${placeholder}" value="${defaultVal}" style="display:block;width:100%;box-sizing:border-box;padding:13px;border:1px solid #cbd5e1;border-radius:12px;font-family:Kanit,sans-serif;font-size:15px;margin-top:8px;background:#f8fafc;">`;
+const _confirmBody = (msg) => `<p style="font-size:15px;line-height:1.6;margin:0;">${msg}</p>`;
 
 let allPendingJobs = []; // เก็บข้อมูลงานทั้งหมดเพื่อใช้ในการค้นหา
 let currentViewData = { jobs: [], stock: [], payroll: [] };
@@ -32,6 +87,7 @@ async function sendData() {
     job_detail: document.getElementById("job_detail").value,
     job_category: document.getElementById("job_category").value,
     budget: document.getElementById("budget").value,
+    referral_code: document.getElementById("referral_code").value,
     user_id: sessionStorage.getItem("userId") || "GUEST",
     measurements: JSON.stringify({
       chest: document.getElementById("m-chest")?.value || "",
@@ -41,32 +97,36 @@ async function sendData() {
   };
 
   if (!data.customer_name || !data.customer_phone || !data.job_detail || !data.budget) {
-    alert("กรุณากรอกข้อมูลให้ครบถ้วน: ชื่อ, เบอร์โทร, รายละเอียดงาน และงบประมาณ");
+    showToast("กรุณากรอกข้อมูลให้ครบถ้วน: ชื่อ, เบอร์โทร, รายละเอียดงาน และงบประมาณ", 'warning');
     return;
   }
 
-  const confirmMsg = "ยืนยันการส่งงาน? \n*ราคาที่ระบุเป็นราคาประเมินเบื้องต้น อาจมีค่าใช้จ่ายเพิ่มเติมตามวัสดุที่เลือกจริง*";
-  if (!confirm(confirmMsg)) return;
+  const confirmed = await showActionModal({
+    title: '<i class="fas fa-paper-plane"></i> ยืนยันการส่งงาน',
+    body: _confirmBody(`ส่งงานจ้าง <b>${data.job_detail}</b><br>งบประมาณ <b>฿${Number(data.budget).toLocaleString()}</b><br><small style="color:var(--text-sub);">*ราคาที่ระบุเป็นราคาประเมินเบื้องต้น อาจมีค่าใช้จ่ายเพิ่มเติมตามวัสดุที่เลือกจริง*</small>`),
+    confirmLabel: 'ส่งงานจ้าง'
+  });
+  if (!confirmed) return;
 
   try {
     btn.disabled = true;
-    btn.innerText = "กำลังส่งข้อมูล...";
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังส่งข้อมูล...';
 
     const response = await fetch(SCRIPT_URL, {
-      method: "POST", // GAS Web App requires POST for doPost
+      method: "POST",
       body: JSON.stringify(data)
     });
-    
+
     const res = await response.json();
 
     if (res.status === "success") {
       showReceipt(res.rn, data);
     } else {
-      alert("เกิดข้อผิดพลาด: " + (res.message || "ไม่สามารถบันทึกข้อมูลได้"));
+      showToast("เกิดข้อผิดพลาด: " + (res.message || "ไม่สามารถบันทึกข้อมูลได้"), 'error');
     }
   } catch (error) {
     console.error("Error:", error);
-    alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
+    showToast("เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่", 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-paper-plane"></i> ส่งงานจ้าง';
@@ -77,7 +137,7 @@ async function loginBoss() {
   const username = document.getElementById("boss-username").value;
   const password = document.getElementById("boss-password").value;
   const remember = document.getElementById("boss-remember").checked;
-  if (!username || !password) return alert("กรุณากรอกชื่อผู้ใช้งานและรหัสผ่าน");
+  if (!username || !password) return showToast("กรุณากรอกชื่อผู้ใช้งานและรหัสผ่าน", 'warning');
 
   const btn = document.querySelector(".login-box .btn-primary");
   btn.disabled = true;
@@ -117,11 +177,11 @@ async function loginBoss() {
       checkAuth();
     } else {
       console.warn("Login Failed:", result.message);
-      alert(result.message || "Login ไม่สำเร็จ");
+      showToast(result.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", 'error');
     }
   } catch (error) {
     console.error("Connection Error:", error); // ดู Error ของ Network หรือ Fetch
-    alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง", 'error');
   } finally {
     btn.disabled = false;
     btn.innerText = "เข้าสู่ระบบ";
@@ -143,7 +203,7 @@ async function registerCustomer() {
     phone: document.getElementById('reg-phone').value
   };
 
-  if (!data.username || !data.password || !data.full_name) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+  if (!data.username || !data.password || !data.full_name) return showToast("กรุณากรอกข้อมูลให้ครบถ้วน", 'warning');
 
   try {
     const response = await fetch(SCRIPT_URL, {
@@ -154,15 +214,15 @@ async function registerCustomer() {
     console.log("Register Result:", result);
 
     if (result.status === "success") {
-      alert("ลงทะเบียนสำเร็จ!");
+      showToast("ลงทะเบียนสำเร็จ! ยินดีต้อนรับสู่ระบบ", 'success');
       sessionStorage.setItem("userRole", result.user.role);
       sessionStorage.setItem("userName", result.user.full_name);
       sessionStorage.setItem("userId", result.user.user_id);
       checkCustomerAuth();
     } else {
-      alert(result.message);
+      showToast(result.message || "ไม่สามารถลงทะเบียนได้", 'error');
     }
-  } catch (e) { alert("เกิดข้อผิดพลาด"); }
+  } catch (e) { showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", 'error'); }
 }
 
 async function loginCustomer() {
@@ -207,11 +267,11 @@ async function loginCustomer() {
       checkCustomerAuth();
     } else {
       console.warn("Customer Login Failed:", result.message);
-      alert("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");
+      showToast("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง", 'error');
     }
   } catch (e) {
     console.error("Customer Login Fetch Error:", e);
-    alert("เกิดข้อผิดพลาด"); 
+    showToast("เกิดข้อผิดพลาด กรุณาลองใหม่", 'error'); 
   }
 }
 
@@ -254,18 +314,28 @@ function checkCustomerAuth() {
 function switchCustomerTab(type) {
   const newOrder = document.getElementById('order-new-section');
   const history = document.getElementById('order-history-section');
+  const notifications = document.getElementById('order-notifications-section');
   
+  newOrder.classList.add('hidden');
+  history.classList.add('hidden');
+  notifications.classList.add('hidden');
+
   if (type === 'order') {
     newOrder.classList.remove('hidden'); newOrder.classList.add('fade-in');
-    history.classList.add('hidden');
-  } else {
-    newOrder.classList.add('hidden');
+  } else if (type === 'history') {
     history.classList.remove('hidden'); history.classList.add('fade-in');
+    loadCustomerJobs();
+  } else if (type === 'notifications') {
+    notifications.classList.remove('hidden'); notifications.classList.add('fade-in');
+    loadNotifications();
+  } else if (type === 'profile') {
+    const profile = document.getElementById('order-profile-section');
+    profile.classList.remove('hidden'); profile.classList.add('fade-in');
+    loadProfile();
   }
 
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + type).classList.add('active');
-  if (type === 'history') loadCustomerJobs();
 }
 
 function toggleTailorForgot(isForgot) {
@@ -282,7 +352,7 @@ async function handleResetPassword(type) {
     new_password: document.getElementById(prefix + 'new-pass').value
   };
 
-  if (!data.username || !data.phone || !data.new_password) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+  if (!data.username || !data.phone || !data.new_password) return showToast("กรุณากรอกข้อมูลให้ครบถ้วน", 'warning');
 
   try {
     const response = await fetch(SCRIPT_URL, {
@@ -292,15 +362,15 @@ async function handleResetPassword(type) {
     const result = await response.json();
 
     if (result.status === "success") {
-      alert("เปลี่ยนรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่");
+      showToast("เปลี่ยนรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่", 'success');
       if (type === 'customer') toggleAuth('login');
       else toggleTailorForgot(false);
     } else {
-      alert(result.message);
+      showToast(result.message || "ไม่สามารถรีเซ็ตรหัสผ่านได้", 'error');
     }
   } catch (e) {
     console.error("Register Error:", e);
-    alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง", 'error');
   }
 }
 
@@ -313,9 +383,9 @@ function checkAuth() {
   const tailorView = document.getElementById("tailor-view");
 
   if (role === 'boss' || role === 'tailor') {
-    if (loginOverlay) loginOverlay.classList.add('hidden');
-    if (mainContent) { mainContent.classList.remove('hidden'); mainContent.classList.add('fade-in'); }
-    if (tailorView) tailorView.classList.remove('hidden');
+    if (loginOverlay) { loginOverlay.classList.add('hidden'); loginOverlay.style.display = 'none'; }
+    if (mainContent) { mainContent.style.display = 'block'; mainContent.classList.add('fade-in'); }
+    if (tailorView) { tailorView.style.display = 'block'; }
     
     // จัดการการแสดงผลตามสิทธิ์
     const isBoss = role === 'boss';
@@ -324,7 +394,13 @@ function checkAuth() {
         else el.classList.add('hidden');
     });
     
-    loadJobs('pending');
+    const autoTab = sessionStorage.getItem('autoTab');
+    if (autoTab) {
+      sessionStorage.removeItem('autoTab');
+      setTimeout(() => switchTab(autoTab), 200);
+    } else {
+      loadJobs('pending');
+    }
   } else {
     if (loginOverlay) { loginOverlay.classList.remove('hidden'); loginOverlay.style.display = 'flex'; }
     if (mainContent) mainContent.classList.add('hidden');
@@ -360,56 +436,82 @@ async function loadCustomerJobs() {
       return;
     }
 
-    container.innerHTML = myJobs.map(job => `
+    const STATUS_TH  = { pending: 'รอรับงาน', accepted: 'รับงานแล้ว', sewing: 'กำลังเย็บ', finished: 'เสร็จสมบูรณ์', rejected: 'ถูกปฏิเสธ', cancelled: 'ยกเลิกแล้ว', paid: 'ชำระเงินแล้ว' };
+    const STATUS_STEP = { pending: 0, accepted: 1, sewing: 2, finished: 3, paid: 3 };
+    const STEP_LABELS = ['รอรับงาน', 'รับงานแล้ว', 'กำลังเย็บ', 'เสร็จแล้ว'];
+
+    container.innerHTML = myJobs.map(job => {
+      const isEnded = job.status === 'rejected' || job.status === 'cancelled';
+      const step = STATUS_STEP[job.status] ?? -1;
+      let m = {};
+      try { if (job.measurements) m = JSON.parse(job.measurements); } catch(e) {}
+      const dateStr = job.created_at
+        ? new Date(job.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
+        : '';
+
+      return `
       <div class="job-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <span class="status-badge ${job.status}">
-            ${job.status === 'pending' ? 'รอรับงาน' : 
-              job.status === 'accepted' ? 'รับงานแล้ว' : 
-              job.status === 'sewing' ? 'กำลังเย็บ' : 
-              job.status === 'finished' ? 'เสร็จแล้ว' : 'ยกเลิกแล้ว'}
-          </span>
-          <small>ID: ${job.rn}</small>
-        </div>
-        <h3>${job.job_detail}</h3>
-        <p><strong>งบประมาณ:</strong> ฿${Number(job.budget).toLocaleString()}</p>
-        <p><strong>ช่างผู้ดูแล:</strong> ${job.tailor_name || 'รอดำเนินการ'}</p>
-        
-        ${job.progress_photo ? `
-          <div style="margin-top: 10px;">
-            <a href="${job.progress_photo}" target="_blank" class="btn-demo" style="border-style: solid; font-size: 12px; padding: 8px;">
-              <i class="fas fa-camera"></i> ดูรูปความคืบหน้างานเย็บ
-            </a>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+            <span class="status-badge ${job.status}">${STATUS_TH[job.status] || job.status}</span>
+            <span class="cat-pill">${job.job_category || 'ไม่ระบุ'}</span>
           </div>
-        ` : ''}
+          <div style="text-align:right;">
+            <div class="rn-label">${job.rn}</div>
+            <div style="font-size:11px; color:var(--text-sub);">${dateStr}</div>
+          </div>
+        </div>
+
+        <h3 style="margin:0 0 10px; font-size:15px; line-height:1.4;">${job.job_detail}</h3>
+
+        ${!isEnded ? `
+        <div class="status-timeline">
+          ${STEP_LABELS.map((lbl, i) => `
+            <div class="tl-step ${i <= step ? (i === step ? 'tl-active' : 'tl-done') : ''}">
+              <div class="tl-dot">${i < step ? '<i class="fas fa-check"></i>' : ''}</div>
+              <span class="tl-label">${lbl}</span>
+            </div>
+            ${i < 3 ? `<div class="tl-line ${i < step ? 'tl-done' : ''}"></div>` : ''}
+          `).join('')}
+        </div>` : `
+        <div class="rejection-note">
+          <i class="fas fa-${job.status === 'rejected' ? 'ban' : 'times-circle'}"></i>
+          ${job.cancellation_reason || (job.status === 'rejected' ? 'ถูกปฏิเสธโดยร้านค้า' : 'ยกเลิกโดยลูกค้า')}
+        </div>`}
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:13px; margin:10px 0; align-items:center;">
+          <span><i class="fas fa-coins" style="color:var(--primary);"></i> <strong>฿${Number(job.budget).toLocaleString()}</strong></span>
+          ${job.additional_cost ? `<span style="color:var(--warning);"><i class="fas fa-plus-circle"></i> เพิ่มเติม ฿${Number(job.additional_cost).toLocaleString()}</span>` : ''}
+          ${job.final_price ? `<span style="color:var(--success); font-weight:600;"><i class="fas fa-receipt"></i> สุทธิ ฿${Number(job.final_price).toLocaleString()}</span>` : ''}
+          ${job.tailor_name ? `<span style="color:var(--text-sub);"><i class="fas fa-cut"></i> ${job.tailor_name}</span>` : '<span style="color:var(--text-sub);"><i class="fas fa-cut"></i> รอช่างรับงาน</span>'}
+          ${(m.chest || m.waist || m.length) ? `<span style="color:var(--text-sub);"><i class="fas fa-ruler"></i> ${m.chest||'-'}/${m.waist||'-'}/${m.length||'-'}"</span>` : ''}
+        </div>
+
+        ${job.progress_photo ? `
+          <a href="${job.progress_photo}" target="_blank" class="btn-demo progress-link" style="margin-bottom:8px;">
+            <i class="fas fa-camera"></i> ดูรูปความคืบหน้างาน
+          </a>` : ''}
 
         ${job.status === 'pending' ? `
-          <button class="btn-logout" 
-                  style="width: 100%; margin-top: 10px; border-color: var(--warning); color: var(--warning);" 
-                  onclick="cancelOrder('${job.id}')">
+          <button class="btn-logout" style="width:100%; margin-top:8px; border-color:var(--warning); color:var(--warning);" onclick="cancelOrder('${job.id}')">
             <i class="fas fa-times-circle"></i> ยกเลิกการจ้างงาน
-          </button>
-        ` : ''}
+          </button>` : ''}
 
         ${job.status === 'finished' && !job.rating ? `
-          <button class="btn-primary" 
-                  style="width: 100%; margin-top: 10px; background: var(--success);" 
-                  onclick="confirmAndRateJob('${job.id}')">
+          ${job.final_price ? `<button class="btn-primary" style="width:100%; margin-top:8px; background:var(--info);" onclick="payFinalPrice('${job.id}')"><i class="fas fa-credit-card"></i> ชำระราคาสุทธิ ฿${Number(job.final_price).toLocaleString()}</button>` : ''}
+          <button class="btn-primary" style="width:100%; margin-top:8px; background:var(--success);" onclick="confirmAndRateJob('${job.id}')">
             <i class="fas fa-star"></i> ยืนยันรับงานและให้คะแนน
           </button>
-          <button class="btn-logout" 
-                  style="width: 100%; margin-top: 5px; border-color: var(--secondary); color: var(--secondary);" 
-                  onclick="requestRevision('${job.id}')">
-            <i class="fas fa-tools"></i> ขอแก้ไขงาน/ส่งเคลม
-          </button>
-        ` : job.rating ? `
+          <button class="btn-logout" style="width:100%; margin-top:5px; border-color:var(--secondary); color:var(--secondary);" onclick="requestRevision('${job.id}')">
+            <i class="fas fa-tools"></i> ขอแก้ไขงาน / ส่งเคลม
+          </button>` :
+        job.rating ? `
           <div class="rating-stars">
             ${'★'.repeat(Number(job.rating))}${'☆'.repeat(5 - Number(job.rating))}
-            <span style="color: var(--text-sub); font-size: 12px; margin-left: 5px;">(${job.rating}/5)</span>
-          </div>
-        ` : ''}
-      </div>
-    `).join('');
+            <span style="color:var(--text-sub); font-size:12px; margin-left:5px;">${job.rating}/5 — รับงานแล้ว</span>
+          </div>` : ''}
+      </div>`;
+    }).join('');
   } catch (e) { container.innerHTML = "<p>ไม่สามารถโหลดข้อมูลได้</p>"; }
 }
 
@@ -477,16 +579,29 @@ function switchTab(type) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + type)?.classList.add('active');
 
-  if (type === 'stock') {
+  if (type === 'dashboard') {
     jobList.style.display = 'none';
     searchContainer.style.display = 'none';
-    const hideIds = ['user-management-section', 'tailor-stats-section', 'payroll-management-section'];
-    perfSections.forEach(el => {
-      el.style.display = hideIds.includes(el.id) ? 'none' : 'block';
-    });
-    if (plSection) plSection.style.display = 'none';
-    if (analysisSection) analysisSection.style.display = 'none';
-    loadJobs('pending');
+    perfSections.forEach(el => el.style.display = 'none');
+    document.getElementById('performance-summary')?.style.setProperty('display', 'block');
+    document.getElementById('chart-stock')?.style.setProperty('display', 'block');
+    document.getElementById('chart-revenue')?.style.setProperty('display', 'block');
+    document.getElementById('chart-category')?.style.setProperty('display', 'block');
+    if (currentViewData.stock) renderStockChart(currentViewData.stock);
+    if (currentViewData.jobs) {
+      renderRevenueChart(currentViewData.jobs);
+      renderCategoryChart(currentViewData.jobs);
+    }
+  } else if (type === 'performance') {
+    jobList.style.display = 'none';
+    searchContainer.style.display = 'none';
+    perfSections.forEach(el => el.style.display = 'none');
+    document.getElementById('performance-summary')?.style.setProperty('display', 'block');
+  } else if (type === 'stock') {
+    jobList.style.display = 'none';
+    searchContainer.style.display = 'none';
+    perfSections.forEach(el => el.style.display = 'none');
+    document.getElementById('stock-management-section')?.style.setProperty('display', 'block');
   } else if (type === 'users') {
     jobList.style.display = 'none';
     searchContainer.style.display = 'none';
@@ -709,47 +824,89 @@ function renderStock(stock) {
     return;
   }
 
+  const totalValue = displayData.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.unit_price)), 0);
+  const lowCount = displayData.filter(item => Number(item.quantity) <= Number(item.min_threshold)).length;
+
   container.innerHTML = `
+    ${lowCount > 0 ? `<div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:12px; padding:10px 14px; margin-bottom:12px; font-size:13px; color:#92400e; display:flex; align-items:center; gap:8px;"><i class="fas fa-exclamation-triangle"></i> มีวัสดุ <strong>${lowCount} รายการ</strong> ที่ใกล้หมดคลัง กรุณาสั่งซื้อเพิ่ม</div>` : ''}
     <table class="stats-table">
       <thead>
         <tr>
-          <th>วัสดุ</th>
+          <th>ชื่อวัสดุ</th>
+          <th>หมวดหมู่</th>
           <th>คงเหลือ</th>
+          <th>ขั้นต่ำ</th>
+          <th>ราคา/หน่วย</th>
+          <th>มูลค่ารวม</th>
           <th>สถานะ</th>
-          <th>จัดการ</th>
+          <th>แก้ไข</th>
         </tr>
       </thead>
       <tbody>
         ${displayData.map(item => {
           const isLow = Number(item.quantity) <= Number(item.min_threshold);
+          const itemVal = Number(item.quantity) * Number(item.unit_price);
           return `
           <tr class="${isLow ? 'low-stock-row' : ''}">
-            <td>${item.item_name}</td>
-            <td>${item.quantity} ${item.unit}</td>
+            <td><strong>${item.item_name}</strong><br><small style="color:var(--text-sub); font-family:monospace;">${item.item_id}</small></td>
+            <td>${item.category || '-'}</td>
+            <td><strong>${item.quantity}</strong> ${item.unit}</td>
+            <td style="color:var(--text-sub);">${item.min_threshold} ${item.unit}</td>
+            <td>฿${Number(item.unit_price).toLocaleString()}</td>
+            <td class="${itemVal > 0 ? 'text-primary' : ''}"><strong>฿${itemVal.toLocaleString()}</strong></td>
             <td><span class="status-badge ${isLow ? 'low-stock' : 'normal'}">
-              ${isLow ? '<i class="fas fa-exclamation-triangle"></i> ของใกล้หมด' : '<i class="fas fa-check"></i> ปกติ'}
+              ${isLow ? '<i class="fas fa-exclamation-triangle"></i> ใกล้หมด' : '<i class="fas fa-check"></i> ปกติ'}
             </span></td>
-            <td><button onclick="updateStockQty('${item.item_id}', ${item.quantity})" class="btn-logout"><i class="fas fa-edit"></i></button></td>
-          </tr>
-          `;
+            <td><button onclick="updateStockQty('${item.item_id}', ${item.quantity})" class="btn-logout" style="padding:6px 10px;"><i class="fas fa-edit"></i></button></td>
+          </tr>`;
         }).join('')}
       </tbody>
+      <tfoot>
+        <tr style="background:var(--bg); font-weight:700;">
+          <td colspan="5" style="text-align:right; padding:10px 14px;">มูลค่าคลังสินค้ารวมทั้งหมด</td>
+          <td class="text-primary" style="font-size:1.05em;">฿${totalValue.toLocaleString()}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
     </table>
   `;
 }
 
 async function updateStockQty(id, currentQty) {
-  const newQty = prompt("กรุณาระบุจำนวนสต๊อกใหม่:", currentQty);
-  if (newQty === null) return;
-  
+  const newQty = await showActionModal({
+    title: '<i class="fas fa-edit"></i> แก้ไขจำนวนสต๊อก',
+    body: _inputBody('จำนวนคงเหลือใหม่', 'ระบุจำนวน', 'number', currentQty),
+    confirmLabel: 'บันทึก'
+  });
+  if (!newQty) return;
+
   try {
-    await fetch(SCRIPT_URL, {
-      method: "POST",
-      body: JSON.stringify({ action: "update_stock", id: id, quantity: newQty })
-    });
-    alert("อัปเดตสต๊อกสำเร็จ");
+    await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "update_stock", id: id, quantity: newQty }) });
+    showToast("อัปเดตสต๊อกสำเร็จ", 'success');
     loadJobs('pending', true);
-  } catch (e) { alert("ผิดพลาด"); }
+  } catch (e) { showToast("เกิดข้อผิดพลาด กรุณาลองใหม่", 'error'); }
+}
+
+async function addStockItem() {
+  const name = document.getElementById('new-item-name').value.trim();
+  const cat  = document.getElementById('new-item-cat').value.trim();
+  const qty  = document.getElementById('new-item-qty').value;
+  const unit = document.getElementById('new-item-unit').value.trim();
+  const price= document.getElementById('new-item-price').value;
+  const min  = document.getElementById('new-item-min').value || 5;
+
+  if (!name || !cat || !qty || !unit || !price) return showToast("กรุณากรอกข้อมูลให้ครบถ้วน", 'warning');
+
+  try {
+    const btn = document.getElementById('add-stock-btn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+    await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "add_stock", item_name: name, category: cat, quantity: qty, unit, unit_price: price, min_threshold: min }) });
+    showToast(`เพิ่ม ${name} สำเร็จ`, 'success');
+    document.getElementById('stock-add-form').classList.remove('open');
+    ['new-item-name','new-item-cat','new-item-qty','new-item-unit','new-item-price','new-item-min'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    loadJobs('pending', true);
+  } catch (e) { showToast("เกิดข้อผิดพลาด กรุณาลองใหม่", 'error'); }
+  finally { const btn = document.getElementById('add-stock-btn'); if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-plus"></i> เพิ่มรายการ'; } }
 }
 
 function updateDashboard(jobs) {
@@ -934,49 +1091,96 @@ function renderRejectedAnalysis(jobs) {
   `;
 }
 
-function renderJobs(jobsToRender) { // Renamed parameter for clarity
+function renderJobs(jobsToRender) {
   const container = document.getElementById("job-list");
   const paginationContainer = document.getElementById("pagination-controls");
-  
+
   if (jobsToRender.length === 0) {
     container.innerHTML = "<p class='no-data'>ไม่พบรายการงานที่ตรงกับการค้นหา</p>";
-    if (paginationContainer) paginationContainer.innerHTML = ""; // Clear pagination
+    if (paginationContainer) paginationContainer.innerHTML = "";
     return;
   }
 
   const totalPages = Math.ceil(jobsToRender.length / JOBS_PER_PAGE);
   const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
-  const endIndex = startIndex + JOBS_PER_PAGE;
-  const paginatedJobs = jobsToRender.slice(startIndex, endIndex);
+  const paginatedJobs = jobsToRender.slice(startIndex, startIndex + JOBS_PER_PAGE);
+
+  const STATUS_TH = { pending: 'รอรับงาน', accepted: 'รับงานแล้ว', sewing: 'กำลังเย็บ', finished: 'เสร็จสมบูรณ์', rejected: 'ปฏิเสธงาน', cancelled: 'ยกเลิกแล้ว' };
+  const CAT_ICON  = { 'สูท': 'fa-user-tie', 'กางเกง': 'fa-socks', 'กระโปรง': 'fa-ribbon', 'เดรส': 'fa-female', 'อื่นๆ': 'fa-tag' };
 
   container.innerHTML = paginatedJobs.map(job => {
-    // แปลงข้อมูลสัดส่วนจาก JSON String เป็น Object
     let m = { chest: '-', waist: '-', length: '-' };
-    try {
-      if (job.measurements) m = JSON.parse(job.measurements);
-    } catch (e) { console.error("Error parsing measurements", e); }
+    try { if (job.measurements) m = JSON.parse(job.measurements); } catch (e) {}
+
+    const dateStr = job.created_at
+      ? new Date(job.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
+      : '';
+    const isEnded = job.status === 'rejected' || job.status === 'cancelled';
+    const catIcon = CAT_ICON[job.job_category] || 'fa-tag';
+    const lineId = (job.customer_line || '').replace('@', '');
 
     return `
     <div class="job-card fade-in">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <span class="status-badge ${job.status}">${job.status}</span>
-        <small>${job.created_at ? job.created_at.split('T')[0] : ''}</small>
-      </div>
-      <h3>${job.job_detail}</h3>
 
-      <!-- ส่วนแสดงสัดส่วนสำหรับช่าง (Technical Specs) -->
+      <div class="job-card-header">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span class="status-badge ${job.status}">${STATUS_TH[job.status] || job.status}</span>
+          <span class="cat-pill"><i class="fas ${catIcon}"></i> ${job.job_category || 'ไม่ระบุ'}</span>
+        </div>
+        <div style="text-align:right; min-width:0;">
+          <div class="rn-label">${job.rn || ''}</div>
+          <div style="font-size:11px; color:var(--text-sub);">${dateStr}</div>
+        </div>
+      </div>
+
+      <h3 class="job-title">${job.job_detail}</h3>
+
+      <div class="job-info-grid">
+        <div class="job-info-item">
+          <span class="info-label"><i class="fas fa-user"></i> ลูกค้า</span>
+          <span class="info-val">${job.customer_name}</span>
+        </div>
+        <div class="job-info-item">
+          <span class="info-label"><i class="fas fa-phone"></i> โทร</span>
+          <span class="info-val"><a href="tel:${job.customer_phone}" class="contact-link">${job.customer_phone || '-'}</a></span>
+        </div>
+        ${job.customer_line ? `
+        <div class="job-info-item">
+          <span class="info-label"><i class="fab fa-line"></i> Line</span>
+          <span class="info-val"><a href="https://line.me/ti/p/~${lineId}" target="_blank" class="contact-link line-link">${job.customer_line}</a></span>
+        </div>` : ''}
+        <div class="job-info-item">
+          <span class="info-label"><i class="fas fa-coins"></i> งบประมาณ</span>
+          <span class="info-val budget-val">฿${Number(job.budget).toLocaleString()}</span>
+        </div>
+        ${job.material_cost > 0 ? `
+        <div class="job-info-item">
+          <span class="info-label"><i class="fas fa-box"></i> ต้นทุนวัสดุ</span>
+          <span class="info-val" style="color:var(--warning);">฿${Number(job.material_cost).toLocaleString()}</span>
+        </div>` : ''}
+      </div>
+
       <div class="measurement-spec">
-        <div class="spec-item"><strong>อก</strong> <span class="spec-val">${m.chest || '-'}</span></div>
-        <div class="spec-item"><strong>เอว</strong> <span class="spec-val">${m.waist || '-'}</span></div>
-        <div class="spec-item"><strong>ยาว</strong> <span class="spec-val">${m.length || '-'}</span></div>
+        <div class="spec-item"><strong>อก</strong><span class="spec-val">${m.chest || '-'}"</span></div>
+        <div class="spec-item"><strong>เอว</strong><span class="spec-val">${m.waist || '-'}"</span></div>
+        <div class="spec-item"><strong>ยาว</strong><span class="spec-val">${m.length || '-'}"</span></div>
       </div>
 
-      <p><strong>ผู้โพสต์:</strong> ${job.customer_name}</p>
-      <p><strong>ติดต่อ:</strong> ${job.customer_phone || '-'}</p>
-      <p><strong>งบประมาณ:</strong> ฿${job.budget}</p>
+      ${job.tailor_name && job.status !== 'pending' ? `
+        <p class="tailor-label"><i class="fas fa-cut"></i> ช่างดูแล: <strong>${job.tailor_name}</strong></p>` : ''}
+
+      ${isEnded && job.cancellation_reason ? `
+        <div class="rejection-note">
+          <i class="fas fa-info-circle"></i> <strong>เหตุผล:</strong> ${job.cancellation_reason}
+        </div>` : ''}
+
+      ${job.progress_photo ? `
+        <a href="${job.progress_photo}" target="_blank" class="btn-demo progress-link">
+          <i class="fas fa-camera"></i> ดูรูปความคืบหน้างาน
+        </a>` : ''}
+
       ${renderActionButtons(job)}
-    </div>
-    `;
+    </div>`;
   }).join('');
 
   renderPaginationControls(jobsToRender.length, totalPages);
@@ -994,6 +1198,11 @@ function renderActionButtons(job) {
     return `<button class="btn-primary" style="background:var(--success)" onclick="updateStatus('${job.id}', 'sewing')"><i class="fas fa-cut"></i> เริ่มขั้นตอนตัดเย็บ</button>`;
   } else if (job.status === 'sewing') {
     return `
+      <div style="margin-bottom: 10px;">
+        <label>ค่าใช้จ่ายเพิ่มเติม (ถ้ามี):</label>
+        <input type="number" id="additional-cost-${job.id}" placeholder="0" style="width: 100%; padding: 5px; margin-bottom: 5px;">
+        <button class="btn-secondary" style="width: 100%; margin-bottom: 5px;" onclick="updateAdditionalCost('${job.id}')"><i class="fas fa-plus"></i> อัปเดตค่าใช้จ่ายเพิ่มเติม</button>
+      </div>
       <button class="btn-primary" style="background:var(--secondary); margin-bottom:5px;" onclick="uploadProgressPhoto('${job.id}')"><i class="fas fa-camera"></i> อัปเดตรูปความคืบหน้า</button>
       <button class="btn-primary" style="background:var(--primary-dark)" onclick="updateStatus('${job.id}', 'finished')"><i class="fas fa-check-double"></i> แจ้งงานเสร็จสมบูรณ์</button>
     `;
@@ -1053,44 +1262,47 @@ async function updateStatus(id, newStatus) {
   let payload = { action: "update_status", id: id, status: newStatus };
 
   if (newStatus === 'rejected') {
-    const reason = prompt("กรุณาระบุสาเหตุที่ปฏิเสธงานนี้ (ข้อมูลนี้จะถูกเก็บไว้เพื่อพัฒนาธุรกิจ):");
-    if (reason === null) return; // กดยกเลิก
+    const reason = await showActionModal({
+      title: '<i class="fas fa-times-circle" style="color:#ef4444"></i> ระบุสาเหตุปฏิเสธงาน',
+      body: _textareaBody('สาเหตุที่ปฏิเสธ', 'เช่น ไม่มีช่างว่าง, งบประมาณไม่เพียงพอ, ไม่มีวัสดุ...'),
+      confirmLabel: 'ยืนยันปฏิเสธ'
+    });
+    if (!reason) return;
     payload.cancellation_reason = reason || "ไม่ระบุสาเหตุ";
   }
 
   if (newStatus === 'accepted') {
-    // ใช้ชื่อจาก Session อัตโนมัติเพื่อป้องกันพนักงานพิมพ์ชื่อผิด
     payload.tailor_name = sessionStorage.getItem("userName");
-
-    // ถามเรื่องการหักสต๊อก
-    const useStock = confirm("ต้องการหักสต๊อกวัสดุสำหรับงานนี้ทันทีหรือไม่?");
-    if (useStock && currentViewData.stock.length > 0) {
-      const stockOptions = currentViewData.stock
-        .map((item, index) => `${index + 1}. ${item.item_name} (คงเหลือ ${item.quantity} ${item.unit}) [ID: ${item.item_id}]`)
-        .join('\n');
-      
-      const choice = prompt(`เลือกวัสดุที่ต้องการใช้ (ระบุหมายเลข):\n${stockOptions}`);
-      const selectedItem = currentViewData.stock[parseInt(choice) - 1];
-
-      if (selectedItem) {
-        const qty = prompt(`ระบุจำนวน ${selectedItem.item_name} ที่ใช้ (${selectedItem.unit}):`, "1");
-        if (qty && !isNaN(qty)) {
-          payload.stock_id = selectedItem.item_id;
-          payload.stock_qty = qty;
-        }
+    if (currentViewData.stock && currentViewData.stock.length > 0) {
+      const stockHtml = `<p style="font-size:13px;color:var(--text-sub);margin-bottom:10px;">เลือกวัสดุที่ใช้ (ถ้ามี):</p>
+        <select id="__modal_stock_sel" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font-family:Kanit,sans-serif;font-size:14px;margin-bottom:8px;background:#f8fafc;">
+          <option value="">-- ไม่หักสต๊อก --</option>
+          ${currentViewData.stock.map(s=>`<option value="${s.item_id}|${s.item_name}|${s.unit}">${s.item_name} (คงเหลือ ${s.quantity} ${s.unit})</option>`).join('')}
+        </select>
+        <input type="number" id="__modal_input" placeholder="จำนวนที่ใช้" min="1" value="1" style="display:block;width:100%;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font-family:Kanit,sans-serif;font-size:14px;background:#f8fafc;">`;
+      const qty = await showActionModal({
+        title: '<i class="fas fa-check" style="color:#10b981"></i> รับงาน — เลือกวัสดุ',
+        body: stockHtml,
+        confirmLabel: 'รับงาน'
+      });
+      if (qty === null) return;
+      const sel = document.getElementById('__modal_stock_sel');
+      if (sel && sel.value && qty) {
+        const [stockId] = sel.value.split('|');
+        payload.stock_id = stockId;
+        payload.stock_qty = qty;
       }
     }
   }
 
   try {
-    const response = await fetch(SCRIPT_URL, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
-    alert("อัปเดตสถานะสำเร็จ!");
-    setTimeout(() => loadJobs('pending', true), 2000); // บังคับโหลดใหม่ (Bypass Cache)
+    const btn = event?.target;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+    await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+    showToast("อัปเดตสถานะสำเร็จ!", 'success');
+    setTimeout(() => loadJobs('pending', true), 1500);
   } catch (error) {
-    alert("เกิดข้อผิดพลาด");
+    showToast("เกิดข้อผิดพลาด กรุณาลองใหม่", 'error');
   }
 }
 
@@ -1144,56 +1356,45 @@ async function handleChangePassword() {
   const newPass = document.getElementById("cp-new-pass").value;
   const userId = sessionStorage.getItem("userId");
 
-  if (!oldPass || !newPass) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
-  if (oldPass === newPass) return alert("รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม");
+  if (!oldPass || !newPass) return showToast("กรุณากรอกข้อมูลให้ครบถ้วน", 'warning');
+  if (oldPass === newPass) return showToast("รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม", 'warning');
 
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      body: JSON.stringify({
-        action: "change_password",
-        user_id: userId,
-        old_password: oldPass,
-        new_password: newPass
-      })
+      body: JSON.stringify({ action: "change_password", user_id: userId, old_password: oldPass, new_password: newPass })
     });
     const result = await response.json();
     if (result.status === "success") {
-      alert("เปลี่ยนรหัสผ่านสำเร็จ");
+      showToast("เปลี่ยนรหัสผ่านสำเร็จ", 'success');
       closeChangePasswordModal();
     } else {
-      alert(result.message);
+      showToast(result.message || "ไม่สามารถเปลี่ยนรหัสผ่านได้", 'error');
     }
-  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+  } catch (e) { showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง", 'error'); }
 }
 
-// ฟังก์ชันยืนยันรับงานและให้คะแนน
 async function confirmAndRateJob(id) {
-  const rating = prompt("งานของคุณเสร็จเรียบร้อยแล้ว!\nกรุณาให้คะแนนความพึงพอใจ (1-5 ดาว):", "5");
-  
-  if (rating === null) return;
+  const rating = await showActionModal({
+    title: '<i class="fas fa-star" style="color:#f59e0b"></i> ยืนยันรับงานและให้คะแนน',
+    body: _starBody('งานเสร็จเรียบร้อยแล้ว! กรุณาให้คะแนนความพึงพอใจ'),
+    confirmLabel: 'ยืนยันรับงาน'
+  });
+  if (!rating) return;
   const ratingNum = parseInt(rating);
-  
-  if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-    return alert("กรุณาระบุคะแนนเป็นตัวเลข 1 ถึง 5 เท่านั้นครับ");
-  }
+  if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) return showToast("กรุณาเลือกคะแนน 1–5 ดาวก่อนยืนยัน", 'warning');
 
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      body: JSON.stringify({ 
-        action: "update_status", 
-        id: id, 
-        status: "finished",
-        rating: ratingNum 
-      })
+      body: JSON.stringify({ action: "update_status", id: id, status: "finished", rating: ratingNum })
     });
     const res = await response.json();
     if (res.status === "success") {
-      alert("ขอบคุณสำหรับคะแนนความพึงพอใจครับ!");
+      showToast(`ขอบคุณที่ให้คะแนน ${ratingNum} ดาว! ${'⭐'.repeat(ratingNum)}`, 'success', 4000);
       loadCustomerJobs();
     }
-  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+  } catch (e) { showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง", 'error'); }
 }
 
 // ระบบกดค้าง 3 วินาทีสำหรับปุ่มลับ
@@ -1260,33 +1461,28 @@ function fillDemoLogin(type) {
   }
 }
 
-// ฟังก์ชันยกเลิกงานพร้อมระบุเหตุผล
 async function cancelOrder(id) {
-  const reason = prompt("กรุณาระบุเหตุผลในการยกเลิกงานจ้างนี้ (เช่น เปลี่ยนใจ, ได้ร้านอื่นแล้ว):");
-  
-  if (reason === null) return; // กดยกเลิกใน prompt
-  if (reason.trim() === "") return alert("กรุณาระบุเหตุผลเพื่อให้เรานำไปปรับปรุงบริการครับ");
-
-  if (!confirm("ยืนยันการยกเลิกงานจ้างนี้ใช่หรือไม่?")) return;
+  const reason = await showActionModal({
+    title: '<i class="fas fa-times-circle" style="color:#ef4444"></i> ยกเลิกงานจ้าง',
+    body: _textareaBody('เหตุผลในการยกเลิก', 'เช่น เปลี่ยนใจ, ได้ร้านอื่น, งบประมาณเปลี่ยน...'),
+    confirmLabel: 'ยืนยันยกเลิก'
+  });
+  if (!reason) return;
+  if (!reason.trim()) return showToast("กรุณาระบุเหตุผลเพื่อให้เรานำไปปรับปรุงบริการ", 'warning');
 
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      body: JSON.stringify({ 
-        action: "update_status", 
-        id: id, 
-        status: "cancelled",
-        cancellation_reason: reason 
-      })
+      body: JSON.stringify({ action: "update_status", id: id, status: "cancelled", cancellation_reason: reason })
     });
     const res = await response.json();
     if (res.status === "success") {
-      alert("ยกเลิกงานจ้างเรียบร้อยแล้ว");
+      showToast("ยกเลิกงานจ้างเรียบร้อยแล้ว", 'info');
       loadCustomerJobs();
     } else {
-      alert("ไม่สามารถยกเลิกได้: " + res.message);
+      showToast("ไม่สามารถยกเลิกได้: " + res.message, 'error');
     }
-  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+  } catch (e) { showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง", 'error'); }
 }
 
 // === จัดการสิทธิ์ผู้ใช้ ===
@@ -1328,24 +1524,20 @@ function renderUsers(users) {
 
 async function changeUserRole(userId, newRole) {
   const roleLabel = newRole === 'boss' ? 'เจ้าของร้าน' : newRole === 'tailor' ? 'ช่าง' : 'ลูกค้า';
-  if (!confirm(`ยืนยันการเปลี่ยนสิทธิ์เป็น "${roleLabel}"?`)) {
-    renderUsers(currentViewData.users);
-    return;
-  }
+  const confirmed = await showActionModal({
+    title: '<i class="fas fa-user-cog"></i> เปลี่ยนสิทธิ์ผู้ใช้',
+    body: _confirmBody(`ยืนยันการเปลี่ยนสิทธิ์เป็น <b>${roleLabel}</b>?`),
+    confirmLabel: 'ยืนยัน'
+  });
+  if (!confirmed) { renderUsers(currentViewData.users); return; }
   try {
     await fetch(SCRIPT_URL, {
       method: "POST",
-      body: JSON.stringify({
-        action: "update_role",
-        user_id: userId,
-        role: newRole,
-        admin_id: sessionStorage.getItem("userId"),
-        admin_name: sessionStorage.getItem("userName")
-      })
+      body: JSON.stringify({ action: "update_role", user_id: userId, role: newRole, admin_id: sessionStorage.getItem("userId"), admin_name: sessionStorage.getItem("userName") })
     });
-    alert("เปลี่ยนสิทธิ์สำเร็จ");
+    showToast(`เปลี่ยนสิทธิ์เป็น${roleLabel}สำเร็จ`, 'success');
     loadJobs('pending', true);
-  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+  } catch (e) { showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง", 'error'); }
 }
 
 // === สถิติส่วนตัวช่าง ===
@@ -1402,8 +1594,9 @@ async function requestPayment() {
   const amountText = document.getElementById('my-available-income')?.innerText?.replace(/[฿,]/g, '') || '0';
   const amount = Number(amountText);
 
-  if (amount <= 0) return alert("ไม่มียอดเงินที่สามารถเบิกได้ในขณะนี้");
-  if (!confirm(`ยืนยันการยื่นขอเบิกเงิน ฿${amount.toLocaleString()} (รอบวันที่ ${cycle})?`)) return;
+  if (amount <= 0) return showToast("ไม่มียอดเงินที่สามารถเบิกได้ในขณะนี้", 'warning');
+  const confirmed = await showActionModal({ title: 'ยื่นขอเบิกเงิน', body: _confirmBody(`ยืนยันการยื่นขอเบิกเงิน ฿${amount.toLocaleString()} (รอบวันที่ ${cycle})?`), confirmLabel: 'ยื่นขอ' });
+  if (!confirmed) return;
 
   try {
     const response = await fetch(SCRIPT_URL, {
@@ -1412,13 +1605,99 @@ async function requestPayment() {
     });
     const res = await response.json();
     if (res.status === "success") {
-      alert("ส่งคำขอเบิกเงินสำเร็จ! กรุณารอการอนุมัติจากเจ้าของร้าน");
+      showToast("ส่งคำขอเบิกเงินสำเร็จ! กรุณารอการอนุมัติจากเจ้าของร้าน", 'success');
       loadJobs('pending', true);
     }
-  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+  } catch (e) { showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", 'error'); }
 }
 
-// === จัดการเงินเดือน (Boss) ===
+// === โหลดโปรไฟล์ ===
+async function loadProfile() {
+  const userId = sessionStorage.getItem("userId");
+  if (!userId) return;
+
+  try {
+    const response = await fetch(SCRIPT_URL);
+    const data = await response.json();
+    const user = (data.users || []).find(u => u.user_id === userId);
+    if (user) {
+      document.getElementById('profile-name').value = user.full_name || '';
+      document.getElementById('profile-phone').value = user.phone || '';
+      document.getElementById('profile-line').value = user.line || '';
+    }
+  } catch (error) {
+    console.error("Error loading profile", error);
+  }
+}
+
+// === อัปเดตโปรไฟล์ ===
+async function updateProfile() {
+  const userId = sessionStorage.getItem("userId");
+  const name = document.getElementById('profile-name').value;
+  const phone = document.getElementById('profile-phone').value;
+  const line = document.getElementById('profile-line').value;
+
+  if (!name || !phone) return showToast("กรุณากรอกชื่อและเบอร์โทร", 'warning');
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "update_profile", user_id: userId, full_name: name, phone: phone, line: line })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      showToast("อัปเดตโปรไฟล์สำเร็จ!", 'success');
+      sessionStorage.setItem("userName", name);
+    } else {
+      showToast("เกิดข้อผิดพลาด กรุณาลองใหม่", 'error');
+    }
+  } catch (error) {
+    showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง", 'error');
+  }
+}
+async function payFinalPrice(id) {
+  const job = currentFilteredJobs.find(j => j.id === id);
+  if (!job || !job.final_price) return showToast("ไม่พบข้อมูลราคา", 'error');
+
+  const confirmed = await showActionModal({ title: 'ยืนยันการชำระเงิน', body: _confirmBody(`ชำระเงิน ฿${Number(job.final_price).toLocaleString()} สำหรับงานนี้?`), confirmLabel: 'ชำระเงิน' });
+  if (!confirmed) return;
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "pay_final_price", id: id })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      showToast("ชำระเงินสำเร็จ!", 'success');
+      loadCustomerJobs();
+    } else {
+      showToast("เกิดข้อผิดพลาด กรุณาลองใหม่", 'error');
+    }
+  } catch (error) {
+    showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง", 'error');
+  }
+}
+async function updateAdditionalCost(id) {
+  const additionalCost = document.getElementById(`additional-cost-${id}`).value;
+  if (!additionalCost || isNaN(additionalCost)) return showToast("กรุณากรอกจำนวนเงินเพิ่มเติมที่ถูกต้อง", 'warning');
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "update_additional_cost", id: id, additional_cost: additionalCost })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      showToast("อัปเดตค่าใช้จ่ายเพิ่มเติมสำเร็จ!", 'success');
+      loadJobs('pending', true);
+    } else {
+      showToast("เกิดข้อผิดพลาด กรุณาลองใหม่", 'error');
+    }
+  } catch (error) {
+    showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง", 'error');
+  }
+}
 function renderPayrollManager(payroll) {
   const container = document.getElementById('admin-payroll-list');
   if (!container) return;
@@ -1457,7 +1736,8 @@ function renderPayrollManager(payroll) {
 }
 
 async function approvePayment(payId) {
-  if (!confirm("ยืนยันการอนุมัติการเบิกเงินนี้?")) return;
+  const confirmed = await showActionModal({ title: 'อนุมัติการเบิกเงิน', body: _confirmBody('ยืนยันการอนุมัติการเบิกเงินนี้?'), confirmLabel: 'อนุมัติ' });
+  if (!confirmed) return;
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
@@ -1465,28 +1745,28 @@ async function approvePayment(payId) {
     });
     const res = await response.json();
     if (res.status === "success") {
-      alert("อนุมัติสำเร็จ");
+      showToast("อนุมัติสำเร็จ", 'success');
       loadJobs('pending', true);
     }
-  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+  } catch (e) { showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", 'error'); }
 }
 
 // === ช่างอัปเดตรูปความคืบหน้า ===
 async function uploadProgressPhoto(id) {
-  const photoUrl = prompt("วางลิงก์รูปภาพความคืบหน้าของงาน:\n(อัปโหลดรูปที่ Google Drive แล้วตั้งค่าให้เปิดได้สาธารณะ)");
-  if (!photoUrl || !photoUrl.trim()) return;
+  const photoUrl = await showActionModal({ title: 'อัปโหลดรูปความคืบหน้า', body: _inputBody('ลิงก์รูปภาพ', 'วางลิงก์ Google Drive (เปิดเป็นสาธารณะ)', 'url', ''), confirmLabel: 'บันทึก' });
+  if (!photoUrl || !String(photoUrl).trim()) return;
 
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      body: JSON.stringify({ action: "update_status", id: id, status: "sewing", progress_photo: photoUrl.trim() })
+      body: JSON.stringify({ action: "update_status", id: id, status: "sewing", progress_photo: String(photoUrl).trim() })
     });
     const res = await response.json();
     if (res.status === "success") {
-      alert("อัปเดตรูปภาพสำเร็จ");
+      showToast("อัปเดตรูปภาพสำเร็จ", 'success');
       loadJobs('active', true);
     }
-  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+  } catch (e) { showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", 'error'); }
 }
 
 // === Dark Mode Toggle ===
@@ -1506,21 +1786,61 @@ function initTheme() {
   });
 }
 
-// === ลูกค้าขอแก้ไข/เคลมงาน ===
+// === โหลดแจ้งเตือนสำหรับลูกค้า ===
+async function loadNotifications() {
+  const container = document.getElementById("notifications-list");
+  const userId = sessionStorage.getItem("userId");
+
+  if (!container || !userId) return;
+  
+  container.innerHTML = "<p>กำลังโหลดแจ้งเตือน...</p>";
+
+  try {
+    const response = await fetch(SCRIPT_URL);
+    const data = await response.json();
+    const myJobs = (data.jobs || []).filter(j => j.user_id === userId);
+
+    if (myJobs.length === 0) {
+      container.innerHTML = "<p class='no-data'>ไม่มีแจ้งเตือน</p>";
+      return;
+    }
+
+    const notifications = myJobs.map(job => {
+      let message = '';
+      if (job.status === 'accepted') message = `งานของคุณ "${job.job_detail}" ได้รับการยอมรับแล้ว`;
+      else if (job.status === 'sewing') message = `งานของคุณ "${job.job_detail}" กำลังดำเนินการ`;
+      else if (job.status === 'finished') message = `งานของคุณ "${job.job_detail}" เสร็จสิ้นแล้ว`;
+      else if (job.additional_cost) message = `งาน "${job.job_detail}" มีค่าใช้จ่ายเพิ่มเติม ฿${job.additional_cost}`;
+
+      if (!message) return null;
+
+      return `
+        <div class="job-card">
+          <p><i class="fas fa-bell"></i> ${message}</p>
+          <small>${job.created_at ? job.created_at.split('T')[0] : ''}</small>
+        </div>
+      `;
+    }).filter(n => n);
+
+    container.innerHTML = notifications.length ? notifications.join('') : "<p class='no-data'>ไม่มีแจ้งเตือนใหม่</p>";
+  } catch (error) {
+    container.innerHTML = "<p>เกิดข้อผิดพลาดในการโหลดแจ้งเตือน</p>";
+  }
+}
 async function requestRevision(id) {
-  const notes = prompt("ระบุรายละเอียดที่ต้องการแก้ไข หรือปัญหาที่พบ:");
-  if (notes === null) return;
-  if (!notes.trim()) return alert("กรุณาระบุรายละเอียดก่อน");
+  const notes = await showActionModal({ title: 'ขอแก้ไขงาน', body: _textareaBody('รายละเอียดที่ต้องการแก้ไข', 'ระบุปัญหาหรือสิ่งที่ต้องการให้แก้ไข...'), confirmLabel: 'ส่งคำขอ' });
+  if (!notes) return;
+  if (!String(notes).trim()) return showToast("กรุณาระบุรายละเอียดก่อน", 'warning');
 
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      body: JSON.stringify({ action: "update_status", id: id, status: "sewing", dispute_notes: notes.trim() })
+      body: JSON.stringify({ action: "update_status", id: id, status: "sewing", dispute_notes: String(notes).trim() })
     });
     const res = await response.json();
     if (res.status === "success") {
-      alert("ส่งคำขอแก้ไขสำเร็จ ช่างจะดำเนินการแก้ไขให้");
+      showToast("ส่งคำขอแก้ไขสำเร็จ ช่างจะดำเนินการแก้ไขให้", 'success');
       loadCustomerJobs();
     }
-  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+  } catch (e) { showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", 'error'); }
 }
