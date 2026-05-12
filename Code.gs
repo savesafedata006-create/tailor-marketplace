@@ -1,0 +1,229 @@
+function doGet(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("JOBS") || ss.insertSheet("JOBS");
+  
+  // สร้างหัวตารางถ้ายังไม่มีข้อมูล (รองรับฟิลด์ใหม่ๆ)
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["id", "rn", "customer_name", "customer_phone", "customer_line", "job_detail", "budget", "status", "tailor_name", "user_id", "created_at"]);
+  }
+  
+  // สร้าง Sheet สำหรับผู้ใช้งาน (Users) ถ้ายังไม่มี
+  if (!ss.getSheetByName("USERS")) {
+    const userSheet = ss.insertSheet("USERS");
+    userSheet.appendRow(["user_id", "username", "password", "role", "full_name", "phone"]);
+    // เพิ่ม User เริ่มต้น (Boss)
+    userSheet.appendRow([Utilities.getUuid(), "admin", "1234", "boss", "เจ้าของร้าน", "0000000000"]);
+  }
+  
+  // สร้าง Sheet สำหรับสต๊อกสินค้าถ้ายังไม่มี
+  if (!ss.getSheetByName("STOCK")) {
+    ss.insertSheet("STOCK").appendRow(["item_id", "category", "item_name", "quantity", "unit", "unit_price", "min_threshold", "last_updated"]);
+    ss.getSheetByName("STOCK").appendRow(["STK-001", "ผ้า", "ผ้าไหม", "50", "เมตร", "500", "10", new Date()]);
+  }
+
+  const response = {
+    jobs: getSheetData(ss, "JOBS"),
+    stock: getSheetData(ss, "STOCK"),
+    users: getSheetData(ss, "USERS") // ส่งข้อมูลผู้ใช้ (ควรระวังในการใช้งานจริงให้ส่งเฉพาะที่จำเป็น)
+  };
+
+  return ContentService.createTextOutput(JSON.stringify(response))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getSheetData(ss, sheetName) {
+  const sheet = ss.getSheetByName(sheetName);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0];
+  return values.slice(1).map(row => {
+    let obj = {};
+    headers.forEach((header, index) => {
+      let value = row[index];
+      // จัดการรูปแบบวันที่ให้เป็น ISO String เพื่อให้ Frontend ใช้งานง่าย
+      if (value instanceof Date) value = value.toISOString();
+      obj[header] = value;
+    });
+    return obj;
+  });
+}
+
+function doPost(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("JOBS");
+  const content = JSON.parse(e.postData.contents);
+  
+  // 1. สร้างงานใหม่ (Create Job)
+  if (content.action === "create") {
+    const id = Utilities.getUuid();
+    const rn = "RN-" + Math.floor(1000 + Math.random() * 9000) + "-" + Date.now().toString().slice(-4);
+    sheet.appendRow([
+      id,
+      rn,
+      content.customer_name,
+      content.customer_phone,
+      content.customer_line,
+      content.job_detail,
+      content.budget,
+      "pending",
+      "", // tailor_name
+      content.member_id || "GUEST",
+      new Date()
+    ]);
+
+    // แจ้งเตือน LINE Notify เมื่อมีงานใหม่
+    const configSheet = ss.getSheetByName("CONFIG");
+    if (configSheet) {
+      const configData = configSheet.getDataRange().getValues();
+      let lineToken = "";
+      for (let i = 1; i < configData.length; i++) {
+        if (configData[i][0] === "line_token") {
+          lineToken = configData[i][1].toString();
+          break;
+        }
+      }
+      if (lineToken && lineToken.trim() !== "") {
+        const msg = `\n🆕 มีงานจ้างใหม่!\n📌 เลขที่: ${rn}\n👤 ลูกค้า: ${content.customer_name}\n📞 โทร: ${content.customer_phone}\n📝 รายละเอียด: ${content.job_detail}\n💰 งบประมาณ: ฿${Number(content.budget).toLocaleString()}\n📅 วันที่: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`;
+        sendLineNotify(msg, lineToken);
+      }
+    }
+
+    return createResponse({ status: "success", id: id, rn: rn });
+  }
+  
+  // 2. อัปเดตสถานะงาน (Update Status)
+  if (content.action === "update_status") {
+    const data = sheet.getDataRange().getValues();
+    const jobId = content.id;
+    const newStatus = content.status;
+    const tailorName = content.tailor_name || "";
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] == jobId) {
+        // คอลัมน์ Status (H=8), Tailor Name (I=9)
+        sheet.getRange(i + 1, 8).setValue(newStatus);
+        if (tailorName) sheet.getRange(i + 1, 9).setValue(tailorName);
+        break;
+      }
+    }
+
+    // หักสต๊อกอัตโนมัติ (ถ้ามีการส่งข้อมูลสต๊อกมา)
+    if (newStatus === "accepted" && content.stock_id && content.stock_qty) {
+      const stockSheet = ss.getSheetByName("STOCK");
+      const stockData = stockSheet.getDataRange().getValues();
+      for (let j = 1; j < stockData.length; j++) {
+        if (stockData[j][0] == content.stock_id) {
+          const currentQty = Number(stockData[j][3]);
+          const usedQty = Number(content.stock_qty);
+          const newQty = currentQty - usedQty;
+          const minThreshold = Number(stockData[j][6]);
+          const itemName = stockData[j][2];
+          const unit = stockData[j][4];
+
+          stockSheet.getRange(j + 1, 4).setValue(newQty);
+          stockSheet.getRange(j + 1, 8).setValue(new Date());
+
+          // ตรวจสอบเกณฑ์ขั้นต่ำและแจ้งเตือนผ่าน LINE Notify
+          if (newQty <= minThreshold) {
+            const configSheet = ss.getSheetByName("CONFIG");
+            if (configSheet) {
+              const configValues = configSheet.getDataRange().getValues();
+              let lineToken = "";
+              for (let k = 1; k < configValues.length; k++) {
+                if (configValues[k][0] === "line_token") {
+                  lineToken = configValues[k][1].toString();
+                  break;
+                }
+              }
+              if (lineToken) {
+                const alertMsg = `\n⚠️ เตือน: วัสดุใกล้หมด!\n📦 วัสดุ: ${itemName}\n📉 คงเหลือปัจจุบัน: ${newQty} ${unit}\n🚩 เกณฑ์ขั้นต่ำ: ${minThreshold} ${unit}`;
+                sendLineNotify(alertMsg, lineToken);
+              }
+            }
+          }
+          break;
+        }
+      }
+    }
+    return createResponse({ status: "success" });
+  }
+
+  // 3. ระบบ Login รวม (Boss, Tailor, Customer)
+  if (content.action === "login") {
+    const userSheet = ss.getSheetByName("USERS");
+    const userData = userSheet.getDataRange().getValues();
+    const username = content.username;
+    const password = content.password;
+    
+    for (let i = 1; i < userData.length; i++) {
+      if (userData[i][1] === username && userData[i][2].toString() === password.toString()) {
+        const userProfile = {
+          user_id: userData[i][0],
+          username: userData[i][1],
+          role: userData[i][3],
+          full_name: userData[i][4]
+        };
+
+        // แจ้งเตือน LINE เฉพาะ Boss
+        if (userProfile.role === "boss") {
+          notifyLogin(ss, userProfile.username);
+        }
+
+        return createResponse({ status: "success", user: userProfile });
+      }
+    }
+    return createResponse({ status: "error", message: "Username หรือ Password ไม่ถูกต้อง" });
+  }
+
+  function notifyLogin(ss, username) {
+    const configSheet = ss.getSheetByName("CONFIG");
+    if (configSheet) {
+      const configData = configSheet.getDataRange().getValues();
+      let lineToken = "";
+      for (let i = 1; i < configData.length; i++) {
+        if (configData[i][0] === "line_token") {
+          lineToken = configData[i][1].toString();
+          break;
+        }
+      }
+      if (lineToken && lineToken.trim() !== "") {
+        sendLineNotify("\n🔐 แจ้งเตือน: มีการเข้าสู่ระบบ BOSS\n👤 User: " + username + "\n📅 วันที่: " + new Date().toLocaleString('th-TH'), lineToken);
+      }
+    }
+  }
+
+  // 4. อัปเดตสต๊อกสินค้า
+  if (content.action === "update_stock") {
+    const stockSheet = ss.getSheetByName("STOCK");
+    const data = stockSheet.getDataRange().getValues();
+    const itemId = content.id;
+    const newQty = content.quantity;
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] == itemId) {
+        stockSheet.getRange(i + 1, 4).setValue(newQty);
+        stockSheet.getRange(i + 1, 8).setValue(new Date());
+        break;
+      }
+    }
+    return createResponse({ status: "success" });
+  }
+}
+
+function createResponse(payload) {
+  return ContentService.createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function sendLineNotify(message, token) {
+  const url = "https://notify-api.line.me/api/notify";
+  const options = {
+    "method": "post",
+    "headers": {
+      "Authorization": "Bearer " + token
+    },
+    "payload": {
+      "message": message
+    }
+  };
+  UrlFetchApp.fetch(url, options);
+}

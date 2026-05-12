@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+  <title>Tailor Marketplace</title>
+  <!-- Google Fonts & FontAwesome -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <link rel="stylesheet"
+        href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <i class="fas fa-scissors"></i>
+        <h1>Tailor <span>Order</span></h1>
+      </div>
+    </header>
+
+    <!-- Customer View -->
+    <section id="customer-view" class="view">
+      <div class="section-header">
+        <h2><i class="fas fa-edit"></i> ส่งรายละเอียดงานจ้าง</h2>
+        <p>กรอกข้อมูลเพื่อให้ช่างประเมินงาน</p>
+      </div>
+      <div class="form-group">
+        <div class="input-item">
+          <label>รหัสสมาชิก (ถ้ามีส่วนลด)</label>
+          <input type="text" id="member_id" placeholder="M-XXXXX">
+        </div>
+        <div class="input-item">
+          <label>ชื่อผู้ติดต่อ</label>
+          <input type="text" id="customer_name" placeholder="ชื่อ-นามสกุล">
+        </div>
+        <div class="input-item">
+          <label>เบอร์โทรศัพท์</label>
+          <input type="tel" id="customer_phone" placeholder="08x-xxx-xxxx">
+        </div>
+        <div class="input-item">
+          <label>Line ID (ถ้ามี)</label>
+          <input type="text" id="customer_line" placeholder="@lineid">
+        </div>
+        <div class="input-item">
+          <label>รายละเอียดที่ต้องการ</label>
+          <textarea id="job_detail" rows="4" placeholder="เช่น ตัดกางเกงสแล็คสีดำ 2 ตัว"></textarea>
+        </div>
+        <div class="input-item">
+          <label>งบประมาณ (บาท)</label>
+          <input type="number" id="budget" placeholder="ระบุงบประมาณ">
+        </div>
+        <button class="btn-primary" onclick="sendData()">
+          <i class="fas fa-paper-plane"></i> ส่งงานจ้าง
+        </button>
+      </div>
+    </section>
+
+    <!-- Receipt Modal (Hidden by default) -->
+    <div id="receipt-modal" class="modal" style="display:none;">
+      <div class="receipt-content" id="receipt-to-print">
+        <div class="receipt-header">
+          <i class="fas fa-check-circle"></i>
+          <h3>บันทึกการจ้างงานสำเร็จ</h3>
+          <h2 id="receipt-rn">RN-XXXX</h2>
+        </div>
+        <div class="receipt-body">
+          <p><strong>ชื่อ:</strong> <span id="r-name"></span></p>
+          <p><strong>งาน:</strong> <span id="r-detail"></span></p>
+          <p><strong>งบประมาณ:</strong> ฿<span id="r-budget"></span></p>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="downloadReceipt()"><i class="fas fa-download"></i> บันทึกเป็นรูปภาพ</button>
+      <button class="btn-secondary" onclick="location.reload()">ทำรายการใหม่</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

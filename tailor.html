@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tailor Management System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Login Overlay -->
+  <div id="login-overlay" class="login-screen">
+    <div class="login-box">
+      <i class="fas fa-lock-open"></i>
+      <h2>Tailor System Login</h2>
+      <p>เข้าสู่ระบบสำหรับเจ้าของร้านและพนักงาน</p>
+      <input type="text" id="boss-username" placeholder="ชื่อผู้ใช้งาน">
+      <input type="password" id="boss-password" placeholder="รหัสผ่าน">
+      <button class="btn-primary" onclick="loginBoss()">เข้าสู่ระบบ</button>
+    </div>
+  </div>
+
+  <div class="container" id="main-content" style="display: none;">
+    <header>
+      <div class="brand">
+        <i class="fas fa-cut"></i>
+        <h1>Tailor <span>Admin</span></h1>
+      </div>
+      <button class="btn-logout" onclick="logoutBoss()">
+        <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+      </button>
+    </header>
+
+    <section id="tailor-view" class="view" style="display: none;">
+      <div class="section-header boss-only" id="boss-header-today">
+        <h2><i class="fas fa-chart-pie"></i> สรุปงานวันนี้</h2>
+        <p id="today-date-display"></p>
+      </div>
+
+      <div class="dashboard-grid boss-only">
+        <div class="dash-card">
+          <h3>งานวันนี้</h3>
+          <p id="today-count">0</p>
+        </div>
+        <div class="dash-card income">
+          <h3>รายได้วันนี้</h3>
+          <p id="today-income">฿0</p>
+        </div>
+        <div class="dash-card">
+          <h3>เสร็จวันนี้</h3>
+          <p id="today-finished">0</p>
+        </div>
+      </div>
+
+      <div class="section-header boss-only" id="boss-header-stats">
+        <h2><i class="fas fa-user-tie"></i> สถิติภาพรวมและการเงิน</h2>
+      </div>
+
+      <div class="dashboard-grid boss-only">
+        <div class="dash-card income">
+          <h3>รายได้รวม</h3>
+          <p id="total-income">฿0</p>
+        </div>
+        <div class="dash-card">
+          <h3>ค้างในระบบ</h3>
+          <p id="count-pending">0</p>
+        </div>
+        <div class="dash-card">
+          <h3>กำลังตัดเย็บ</h3>
+          <p id="count-active">0</p>
+        </div>
+        <div class="dash-card">
+          <h3>ทำสำเร็จทั้งหมด</h3>
+          <p id="count-finished">0</p>
+        </div>
+      </div>
+
+      <!-- Boss Performance & Distribution -->
+      <div class="boss-only performance-section">
+        <h3><i class="fas fa-hand-holding-usd"></i> ระบบแจกแจงค่าแรง (ช่าง 40% / ร้าน 60%)</h3>
+        <div id="tailor-performance"></div>
+      </div>
+
+      <!-- Stock Value Chart Section -->
+      <div class="boss-only performance-section chart-section" style="display: none;">
+        <h3><i class="fas fa-chart-bar"></i> มูลค่าสต๊อกแยกตามหมวดหมู่</h3>
+        <div style="height: 300px;"><canvas id="stockChart"></canvas></div>
+      </div>
+
+      <!-- Stock Management Section -->
+      <div class="boss-only performance-section" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3 style="margin: 0;"><i class="fas fa-boxes"></i> ระบบจัดการสต๊อกวัสดุอุปกรณ์</h3>
+          <label class="stock-filter">
+            <input type="checkbox" id="low-stock-filter" onchange="applyStockFilter()">
+            <span> กรองเฉพาะของใกล้หมด</span>
+          </label>
+        </div>
+        <div id="stock-list" class="table-container">
+          <p class="loader">กำลังตรวจสอบคลังสินค้า...</p>
+        </div>
+      </div>
+
+      <div class="search-container">
+        <i class="fas fa-search"></i>
+        <input type="text" id="search-input" placeholder="ค้นหาชื่องานหรือลูกค้า..." oninput="filterJobs()">
+      </div>
+      
+      <div class="tabs">
+        <button onclick="switchTab('pending')" class="tab-btn active" id="tab-pending">
+          <i class="fas fa-inbox"></i> งานใหม่
+        </button>
+        <button onclick="switchTab('active')" class="tab-btn" id="tab-active">
+          <i class="fas fa-spinner"></i> กำลังเย็บ
+        </button>
+        <button onclick="switchTab('stock')" class="tab-btn boss-only" id="tab-stock" style="display: none;">
+          <i class="fas fa-warehouse"></i> สต๊อก
+        </button>
+      </div>
+
+      <div id="job-list" class="job-grid">
+        <div class="loader">กำลังโหลดข้อมูล...</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    window.onload = () => {
+      checkAuth();
+    };
+  </script>
+</body>
+</html>
