@@ -24,10 +24,19 @@
       </div>
       <div id="user-profile-header" style="display:none;">
         <span id="display-user-name"></span>
+        <button class="btn-logout" onclick="openChangePasswordModal()" style="padding: 5px 10px; font-size: 12px; margin-left: 10px;">เปลี่ยนรหัสผ่าน</button>
         <button class="btn-logout" onclick="logoutCustomer()" style="padding: 5px 10px; font-size: 12px; margin-left: 10px;">ออกจากระบบ</button>
       </div>
       <div id="boss-return-link" class="boss-only" style="display:none;">
         <a href="tailor.html" class="btn-logout" style="text-decoration:none; background:var(--primary); color:white; border:none;"><i class="fas fa-arrow-left"></i> กลับหน้าจัดการ</a>
+      </div>
+      <div class="portal-access-container" id="portal-access-container">
+        <button class="portal-access-btn" title="เข้าสู่ระบบพนักงาน/BOSS" onclick="togglePortalDropdown()">
+          <i class="fas fa-cog"></i> <!-- ไอคอนรูปเฟืองเล็กๆ -->
+        </button>
+        <div class="portal-dropdown" id="portal-dropdown">
+          <a href="tailor.html" class="dropdown-item">Admin Login</a>
+        </div>
       </div>
     </header>
 
@@ -65,6 +74,9 @@
       <div class="form-group" id="login-form">
         <input type="text" id="login-username" placeholder="ชื่อผู้ใช้งาน">
         <input type="password" id="login-password" placeholder="รหัสผ่าน">
+        <label style="font-size: 13px; color: var(--text-sub); display: flex; align-items: center; gap: 5px; cursor: pointer;">
+          <input type="checkbox" id="login-remember"> จดจำฉันในระบบ
+        </label>
         <button class="btn-primary" onclick="loginCustomer()">เข้าสู่ระบบ</button>
         <div style="display:flex; justify-content: space-between; font-size: 13px; margin-top: 10px;">
           <a href="#" onclick="toggleAuth('forgot')">ลืมรหัสผ่าน?</a>
@@ -152,6 +164,21 @@
       </div>
       <button class="btn-primary" onclick="downloadReceipt()"><i class="fas fa-download"></i> บันทึกเป็นรูปภาพ</button>
       <button class="btn-secondary" onclick="location.reload()">ทำรายการใหม่</button>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="change-password-modal" class="modal" style="display:none;">
+      <div class="receipt-content">
+        <div class="section-header">
+          <h2><i class="fas fa-key"></i> เปลี่ยนรหัสผ่าน</h2>
+        </div>
+        <div class="form-group">
+          <input type="password" id="cp-old-pass" placeholder="รหัสผ่านเดิม">
+          <input type="password" id="cp-new-pass" placeholder="รหัสผ่านใหม่">
+          <button class="btn-primary" onclick="handleChangePassword()">ยืนยันการเปลี่ยน</button>
+          <button class="btn-secondary" onclick="closeChangePasswordModal()">ยกเลิก</button>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -19,6 +19,9 @@
       <div id="tailor-login-fields">
         <input type="text" id="boss-username" placeholder="ชื่อผู้ใช้งาน">
         <input type="password" id="boss-password" placeholder="รหัสผ่าน">
+        <label style="font-size: 13px; color: var(--text-sub); display: flex; align-items: center; gap: 5px; cursor: pointer; margin-bottom: 15px;">
+          <input type="checkbox" id="boss-remember"> จดจำฉันในระบบ
+        </label>
         <button class="btn-primary" onclick="loginBoss()">เข้าสู่ระบบ</button>
         <p style="margin-top: 15px; font-size: 13px;"><a href="#" onclick="toggleTailorForgot(true)">ลืมรหัสผ่าน?</a></p>
       </div>
@@ -38,6 +41,9 @@
         <i class="fas fa-cut"></i>
         <h1>Tailor <span>Admin</span></h1>
       </div>
+      <button class="btn-logout" onclick="openChangePasswordModal()" style="margin-right: 10px;">
+        <i class="fas fa-key"></i> เปลี่ยนรหัสผ่าน
+      </button>
       <button class="btn-logout" onclick="logoutBoss()">
         <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
       </button>
@@ -153,6 +159,21 @@
         <div class="loader">กำลังโหลดข้อมูล...</div>
       </div>
     </section>
+
+    <!-- Change Password Modal -->
+    <div id="change-password-modal" class="modal" style="display:none;">
+      <div class="receipt-content">
+        <div class="section-header">
+          <h2><i class="fas fa-key"></i> เปลี่ยนรหัสผ่าน</h2>
+        </div>
+        <div class="form-group">
+          <input type="password" id="cp-old-pass" placeholder="รหัสผ่านเดิม">
+          <input type="password" id="cp-new-pass" placeholder="รหัสผ่านใหม่">
+          <button class="btn-primary" onclick="handleChangePassword()">ยืนยันการเปลี่ยน</button>
+          <button class="btn-secondary" onclick="closeChangePasswordModal()">ยกเลิก</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="script.js"></script>

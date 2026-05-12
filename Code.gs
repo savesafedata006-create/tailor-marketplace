@@ -298,6 +298,28 @@ function doPost(e) {
     }
     return createResponse({ status: "success" });
   }
+
+  // 7. เปลี่ยนรหัสผ่าน (Change Password) สำหรับผู้ที่ Login อยู่แล้ว
+  if (content.action === "change_password") {
+    const userSheet = ss.getSheetByName("USERS");
+    const userData = userSheet.getDataRange().getValues();
+    const userId = content.user_id;
+    const oldPassword = content.old_password;
+    const newPassword = content.new_password;
+
+    for (let i = 1; i < userData.length; i++) {
+      if (userData[i][0].toString() === userId.toString()) {
+        if (userData[i][2].toString() === oldPassword.toString()) {
+          userSheet.getRange(i + 1, 3).setValue(newPassword);
+          logEvent(ss, userId, userData[i][1], "CHANGE_PASSWORD", "เปลี่ยนรหัสผ่านสำเร็จ", "success");
+          return createResponse({ status: "success" });
+        } else {
+          return createResponse({ status: "error", message: "รหัสผ่านเดิมไม่ถูกต้อง" });
+        }
+      }
+    }
+    return createResponse({ status: "error", message: "ไม่พบผู้ใช้งานในระบบ" });
+  }
 }
 
 function logEvent(ss, userId, username, action, details, status) {

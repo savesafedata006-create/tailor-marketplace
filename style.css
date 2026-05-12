@@ -458,4 +458,22 @@ tr.low-stock-row {
   color: var(--text-sub);
 }
 
+.portal-access {
+  font-size: 18px;
+  color: var(--text-sub);
+  opacity: 0.4;
+  transition: 0.3s;
+  cursor: pointer;
+}
+
+.portal-access:hover {
+  opacity: 1;
+  color: var(--primary);
+}
+
+.portal-access a {
+  color: inherit;
+  text-decoration: none;
+}
+
 .hub-divider { width: 1px; height: 20px; background: #e2e8f0; margin: 0 15px; }

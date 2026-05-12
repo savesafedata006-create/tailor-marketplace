@@ -6,10 +6,8 @@
 
 ## 🌐 ลิงก์สำหรับการเข้าใช้งาน
 
-**เข้าชมเว็บไซต์ตัวอย่าง (GitHub Pages):**
-> [คลิกที่นี่เพื่อเข้าชมระบบ Tailor Marketplace](https://YOUR_USERNAME.github.io/tailor-marketplace/)
-
-*(หมายเหตุ: โปรดแทนที่ YOUR_USERNAME ด้วยชื่อบัญชี GitHub ของคุณ)*
+**เข้าชมเว็บไซต์ตัวอย่าง (Live Demo):**
+> [https://savesafedata006-create.github.io/tailor-marketplace/](https://savesafedata006-create.github.io/tailor-marketplace/)
 
 เนื่องจากระบบแบ่งการใช้งานออกเป็น 2 ฝั่ง โปรดเลือกเข้าใช้งานตามลิงก์ที่เกี่ยวข้อง:
 

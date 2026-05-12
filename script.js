@@ -52,6 +52,7 @@ async function sendData() {
 async function loginBoss() {
   const username = document.getElementById("boss-username").value;
   const password = document.getElementById("boss-password").value;
+  const remember = document.getElementById("boss-remember").checked;
   if (!username || !password) return alert("กรุณากรอกชื่อผู้ใช้งานและรหัสผ่าน");
 
   const btn = document.querySelector(".login-box .btn-primary");
@@ -69,6 +70,13 @@ async function loginBoss() {
       sessionStorage.setItem("userRole", result.user.role);
       sessionStorage.setItem("userName", result.user.full_name);
       sessionStorage.setItem("userId", result.user.user_id);
+      
+      if (remember) {
+        localStorage.setItem("userRole", result.user.role);
+        localStorage.setItem("userName", result.user.full_name);
+        localStorage.setItem("userId", result.user.user_id);
+      }
+
       checkAuth();
     } else {
       alert(result.message || "Login ไม่สำเร็จ");
@@ -123,6 +131,7 @@ async function loginCustomer() {
     username: document.getElementById('login-username').value,
     password: document.getElementById('login-password').value
   };
+  const remember = document.getElementById('login-remember').checked;
 
   try {
     const response = await fetch(SCRIPT_URL, {
@@ -135,6 +144,13 @@ async function loginCustomer() {
       sessionStorage.setItem("userRole", result.user.role);
       sessionStorage.setItem("userName", result.user.full_name);
       sessionStorage.setItem("userId", result.user.user_id);
+
+      if (remember) {
+        localStorage.setItem("userRole", result.user.role);
+        localStorage.setItem("userName", result.user.full_name);
+        localStorage.setItem("userId", result.user.user_id);
+      }
+
       checkCustomerAuth();
     } else {
       alert("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");
@@ -144,21 +160,32 @@ async function loginCustomer() {
 
 function logoutCustomer() {
   sessionStorage.clear();
+  localStorage.clear();
   location.reload();
 }
 
 function checkCustomerAuth() {
-  const role = sessionStorage.getItem("userRole");
-  const name = sessionStorage.getItem("userName");
+  const role = sessionStorage.getItem("userRole") || localStorage.getItem("userRole");
+  const name = sessionStorage.getItem("userName") || localStorage.getItem("userName");
   const authView = document.getElementById("auth-view");
   const customerView = document.getElementById("customer-view");
   const profileHeader = document.getElementById("user-profile-header");
   const bossReturn = document.getElementById("boss-return-link");
+  const portalAccessContainer = document.getElementById("portal-access-container");
 
   if ((role === 'customer' || role === 'boss') && customerView) {
     authView.style.display = "none";
     customerView.style.display = "block";
     
+    // Sync session if coming from local
+    if (!sessionStorage.getItem("userRole")) {
+      sessionStorage.setItem("userRole", localStorage.getItem("userRole"));
+      sessionStorage.setItem("userName", localStorage.getItem("userName"));
+      sessionStorage.setItem("userId", localStorage.getItem("userId"));
+    }
+
+    if (portalAccessContainer) portalAccessContainer.style.display = "none"; // ซ่อนปุ่มลับเมื่อ Login แล้ว
+
     if (role === 'boss' && bossReturn) {
       bossReturn.style.display = "block";
     } else {
@@ -215,12 +242,19 @@ async function handleResetPassword(type) {
 }
 
 function checkAuth() {
-  const role = sessionStorage.getItem("userRole");
+  const role = sessionStorage.getItem("userRole") || localStorage.getItem("userRole");
   const loginOverlay = document.getElementById("login-overlay");
   const mainContent = document.getElementById("main-content");
   const tailorView = document.getElementById("tailor-view");
 
   if (role) {
+    // Sync session if coming from local
+    if (!sessionStorage.getItem("userRole")) {
+      sessionStorage.setItem("userRole", localStorage.getItem("userRole"));
+      sessionStorage.setItem("userName", localStorage.getItem("userName"));
+      sessionStorage.setItem("userId", localStorage.getItem("userId"));
+    }
+
     if (loginOverlay) loginOverlay.style.display = "none";
     if (mainContent) mainContent.style.display = "block";
     if (tailorView) tailorView.style.display = "block";
@@ -627,6 +661,7 @@ async function updateStatus(id, newStatus) {
 
 function logoutBoss() {
   sessionStorage.clear(); // ล้างข้อมูล Session ทั้งหมด (role, Name, ID) เพื่อความปลอดภัย
+  localStorage.clear();   // ล้างข้อมูลที่จดจำไว้ด้วย
   location.reload();
 }
 
@@ -653,4 +688,46 @@ async function downloadReceipt() {
   link.download = `Receipt-${document.getElementById("receipt-rn").innerText}.png`;
   link.href = canvas.toDataURL();
   link.click();
+}
+
+function openChangePasswordModal() {
+  const modal = document.getElementById("change-password-modal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeChangePasswordModal() {
+  const modal = document.getElementById("change-password-modal");
+  if (modal) {
+    modal.style.display = "none";
+    document.getElementById("cp-old-pass").value = "";
+    document.getElementById("cp-new-pass").value = "";
+  }
+}
+
+async function handleChangePassword() {
+  const oldPass = document.getElementById("cp-old-pass").value;
+  const newPass = document.getElementById("cp-new-pass").value;
+  const userId = sessionStorage.getItem("userId");
+
+  if (!oldPass || !newPass) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+  if (oldPass === newPass) return alert("รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม");
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "change_password",
+        user_id: userId,
+        old_password: oldPass,
+        new_password: newPass
+      })
+    });
+    const result = await response.json();
+    if (result.status === "success") {
+      alert("เปลี่ยนรหัสผ่านสำเร็จ");
+      closeChangePasswordModal();
+    } else {
+      alert(result.message);
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
 }
