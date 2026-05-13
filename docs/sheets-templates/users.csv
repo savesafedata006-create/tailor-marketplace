@@ -1,0 +1,12 @@
+userId,name,role,contact_phone,contact_line,created_at
+CUST-001,สมชาย,customer,0812345678,@somchai,2026-05-01T08:00:00Z
+CUST-002,สมหญิง,customer,0898765432,@somying,2026-05-02T09:00:00Z
+TAILOR-001,ช่างหนึ่ง,tailor,0801112233,@tailor1,2026-04-20T10:00:00Z
+TAILOR-002,ช่างสอง,tailor,0802223344,@tailor2,2026-04-21T10:30:00Z
+ADMIN-001,เจ้าของร้าน,boss,0890009999,@boss,2026-04-01T12:00:00Z
+
+TAILOR-003,ช่างสาม,tailor,0803334455,@tailor3,2026-04-22T09:15:00Z
+TAILOR-004,ช่างสี่,tailor,0804445566,@tailor4,2026-04-23T09:20:00Z
+CUST-003,อนันต์,customer,0820001111,@anan,2026-05-03T12:00:00Z
+CUST-004,กชกร,customer,0831112222,@kot,2026-05-04T09:20:00Z
+CUST-005,มาลิน,customer,0853334444,@malin,2026-05-05T14:10:00Z

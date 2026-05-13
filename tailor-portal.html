@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tailor Portal - ช่าง</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Minimal overrides to make page compact for tailors */
+    body { font-family: 'Kanit', sans-serif; }
+    .tp-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:#fff; border-bottom:1px solid #eee; }
+    .tp-title { font-size:18px; font-weight:600; display:flex; gap:8px; align-items:center; }
+    .tp-summary { display:flex; gap:10px; padding:12px; overflow:auto; }
+    .tp-card { background:#fff; padding:10px 12px; border-radius:8px; box-shadow:0 1px 0 rgba(0,0,0,0.04); min-width:120px; }
+    .job-list { padding:12px; display:flex; flex-direction:column; gap:10px; }
+    .job-card { background:#fff; padding:12px; border-radius:10px; box-shadow:0 1px 0 rgba(0,0,0,0.04); }
+    .job-actions { display:flex; gap:8px; margin-top:8px; }
+    .btn { padding:8px 10px; border-radius:8px; border:0; cursor:pointer; font-weight:600; }
+    .btn-primary { background:linear-gradient(135deg,#16a34a,#059669); color:#fff; }
+    .btn-secondary { background:#f3f4f6; color:#111; }
+    .small { font-size:13px; color:var(--text-sub);} 
+    .upload-row { display:flex; gap:8px; align-items:center; margin-top:8px; }
+    input[type=file] { font-size:13px; }
+    .hidden { display:none; }
+  </style>
+</head>
+<body>
+  <div class="tp-header">
+    <div class="tp-title"><i class="fas fa-cut"></i> <span>Tailor Portal</span></div>
+    <div>
+      <button class="btn btn-secondary" id="tp-logout">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <div id="tp-login" style="padding:16px;">
+    <h3>เข้าสู่ระบบช่าง</h3>
+    <div style="display:flex;flex-direction:column;gap:8px;max-width:420px;">
+      <input id="tp-username" placeholder="ชื่อผู้ใช้ (ตัวอย่าง: tailor1)" />
+      <input id="tp-password" placeholder="รหัสผ่าน" type="password" />
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" id="tp-login-btn">เข้าสู่ระบบ</button>
+        <button class="btn btn-secondary" id="tp-demo-btn">Demo (ไม่มีรหัส)</button>
+      </div>
+      <small class="small">หมายเหตุ: ระบบตัวอย่างนี้ใช้การล็อกอินแบบ demo สำหรับการทดสอบ</small>
+    </div>
+  </div>
+
+  <div id="tp-main" class="hidden">
+    <div class="tp-summary">
+      <div class="tp-card"><div style="font-size:12px;color:var(--text-sub)">Assigned</div><div id="tp-assigned" style="font-weight:700">0</div></div>
+      <div class="tp-card"><div style="font-size:12px;color:var(--text-sub)">In progress</div><div id="tp-active" style="font-weight:700">0</div></div>
+      <div class="tp-card"><div style="font-size:12px;color:var(--text-sub)">Finished</div><div id="tp-finished" style="font-weight:700">0</div></div>
+      <div class="tp-card"><div style="font-size:12px;color:var(--text-sub)">รายได้ที่เบิกได้</div><div id="tp-income" style="font-weight:700">฿0</div></div>
+    </div>
+
+    <div style="padding:12px; display:flex; gap:8px; align-items:center;">
+      <button class="btn btn-secondary" id="tp-filter-assigned">Assigned</button>
+      <button class="btn btn-secondary" id="tp-filter-active">In progress</button>
+      <button class="btn btn-secondary" id="tp-filter-all">All</button>
+      <button class="btn btn-secondary" id="tp-history-btn">ประวัติ</button>
+      <div style="flex:1"></div>
+      <input id="tp-search" placeholder="ค้นหา RN หรือ ลูกค้า" style="padding:8px;border-radius:8px;border:1px solid #eee;min-width:140px;" />
+    </div>
+
+    <div class="job-list" id="tp-job-list">
+      <!-- Job cards will be injected here -->
+    </div>
+    <div id="tp-history" class="hidden" style="padding:12px;">
+      <h4>ประวัติการทำงาน</h4>
+      <div id="tp-history-list" class="job-list"></div>
+    </div>
+  </div>
+
+  <template id="tp-job-template">
+    <div class="job-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:13px;color:var(--text-sub);">RN: <span class="rn"></span></div>
+          <div style="font-weight:700; margin-top:6px;" class="detail"></div>
+          <div class="small">ลูกค้า: <span class="cname"></span> • งบ ฿<span class="budget"></span></div>
+        </div>
+        <div style="text-align:right">
+          <div class="small status"></div>
+          <div style="margin-top:6px;" class="small created"></div>
+        </div>
+      </div>
+      <div class="job-actions">
+        <button class="btn btn-primary btn-start">เริ่มเย็บ</button>
+        <button class="btn btn-secondary btn-upload">อัพโหลดรูป</button>
+        <button class="btn btn-secondary btn-finish">แจ้งเสร็จ</button>
+      </div>
+      <div class="upload-row hidden">
+        <input type="file" accept="image/*" class="tp-file" />
+        <button class="btn btn-primary btn-do-upload">ส่งรูป</button>
+        <div class="small upload-status"></div>
+      </div>
+    </div>
+  </template>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" defer></script>
+  <script src="script.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const loginEl = document.getElementById('tp-login');
+      const mainEl = document.getElementById('tp-main');
+      const demoBtn = document.getElementById('tp-demo-btn');
+      const loginBtn = document.getElementById('tp-login-btn');
+      const logoutBtn = document.getElementById('tp-logout');
+
+      function showMainForTailor(id, name) {
+        sessionStorage.setItem('userRole','tailor');
+        sessionStorage.setItem('userId', id);
+        sessionStorage.setItem('userName', name || 'Tailor');
+        loginEl.classList.add('hidden');
+        mainEl.classList.remove('hidden');
+        loadTailorJobs();
+      }
+
+      demoBtn.addEventListener('click', () => showMainForTailor('TAILOR-DEMO-1','Demo Tailor'));
+      loginBtn.addEventListener('click', () => {
+        // For demo, accept any username/password
+        const u = document.getElementById('tp-username').value || 'tailor-x';
+        showMainForTailor('TAILOR-'+u.toUpperCase(), u);
+      });
+      logoutBtn.addEventListener('click', () => { sessionStorage.clear(); localStorage.clear(); location.reload(); });
+
+      document.getElementById('tp-filter-assigned').addEventListener('click', () => loadTailorJobs('assigned'));
+      document.getElementById('tp-filter-active').addEventListener('click', () => loadTailorJobs('sewing'));
+      document.getElementById('tp-filter-all').addEventListener('click', () => loadTailorJobs('all'));
+  document.getElementById('tp-history-btn').addEventListener('click', () => toggleHistory());
+      document.getElementById('tp-search').addEventListener('input', (e) => filterLocalJobs(e.target.value));
+
+      let localJobs = [];
+      function filterLocalJobs(q) {
+        q = (q||'').toLowerCase();
+        const list = document.getElementById('tp-job-list');
+        if (!list) return;
+        list.innerHTML = '';
+        const filtered = localJobs.filter(j => j.rn.toLowerCase().includes(q) || (j.customer_name||'').toLowerCase().includes(q));
+        filtered.forEach(renderJobCard);
+      }
+
+      async function loadTailorJobs(filter) {
+        const list = document.getElementById('tp-job-list');
+        list.innerHTML = '<div class="small">กำลังโหลดงาน...</div>';
+        try {
+          const res = await fetch(SCRIPT_URL);
+          const data = await res.json();
+          const jt = (data.jobs||[]);
+          const myId = sessionStorage.getItem('userId');
+          // assigned to me OR unassigned and status pending
+          localJobs = jt.filter(j => (j.assigned_tailor && j.assigned_tailor === myId) || (filter === 'all') || (filter === 'assigned' && j.assigned_tailor === myId) || (filter === 'sewing' && j.status === 'sewing'));
+
+          // update summary
+          document.getElementById('tp-assigned').innerText = jt.filter(j => j.assigned_tailor === myId).length;
+          document.getElementById('tp-active').innerText = jt.filter(j => j.assigned_tailor === myId && (j.status === 'sewing' || j.status === 'accepted')).length;
+          document.getElementById('tp-finished').innerText = jt.filter(j => j.assigned_tailor === myId && j.status === 'finished').length;
+          // compute income (simple sum of finished budgets * 0.4)
+          const myFinished = jt.filter(j => j.assigned_tailor === myId && j.status === 'finished');
+          const income = myFinished.reduce((s, x) => s + (Number(x.budget) || 0) * 0.4, 0);
+          document.getElementById('tp-income').innerText = '฿' + income.toLocaleString();
+
+          list.innerHTML = '';
+          localJobs.forEach(renderJobCard);
+          // also populate history list
+          renderHistory(jt.filter(j => j.assigned_tailor === myId && j.status === 'finished'));
+        } catch (err) {
+          list.innerHTML = '<div class="small">ไม่สามารถโหลดข้อมูลได้</div>';
+        }
+      }
+
+      function toggleHistory() {
+        const h = document.getElementById('tp-history');
+        if (!h) return;
+        h.classList.toggle('hidden');
+      }
+
+      function renderHistory(items) {
+        const container = document.getElementById('tp-history-list');
+        if (!container) return;
+        if (!items || items.length === 0) { container.innerHTML = '<p class="small">ยังไม่มีประวัติการทำงาน</p>'; return; }
+        container.innerHTML = '';
+        items.slice().reverse().forEach(j => {
+          const div = document.createElement('div');
+          div.className = 'job-card';
+          div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><div><strong>${j.rn}</strong><div class="small">${j.job_detail}</div></div><div class="small">฿${Number(j.budget).toLocaleString()}</div></div>`;
+          container.appendChild(div);
+        });
+      }
+
+      function renderJobCard(job) {
+        const tpl = document.getElementById('tp-job-template');
+        const node = tpl.content.cloneNode(true);
+        const el = node.querySelector('.job-card');
+        el.querySelector('.rn').innerText = job.rn || job.jobId || job.job_id || '';
+        el.querySelector('.detail').innerText = job.job_detail || '';
+        el.querySelector('.cname').innerText = job.customer_name || '';
+        el.querySelector('.budget').innerText = job.budget || '0';
+        el.querySelector('.status').innerText = job.status || '';
+        el.querySelector('.created').innerText = (job.created_at||'').split('T')[0];
+
+        const btnStart = el.querySelector('.btn-start');
+        const btnUpload = el.querySelector('.btn-upload');
+        const btnFinish = el.querySelector('.btn-finish');
+
+        btnStart.addEventListener('click', async () => {
+          await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'update_status', jobId: job.jobId || job.rn || job.id || job.job_id, newStatus: 'sewing', actorId: sessionStorage.getItem('userId'), actorRole: 'tailor' }) });
+          loadTailorJobs();
+        });
+
+        btnFinish.addEventListener('click', async () => {
+          if (!confirm('ยืนยันว่างานเสร็จเรียบร้อยแล้ว?')) return;
+          await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'update_status', jobId: job.jobId || job.rn || job.id || job.job_id, newStatus: 'finished', actorId: sessionStorage.getItem('userId'), actorRole: 'tailor' }) });
+          loadTailorJobs();
+        });
+
+        btnUpload.addEventListener('click', () => {
+          const uploadRow = el.querySelector('.upload-row');
+          uploadRow.classList.toggle('hidden');
+        });
+
+        const doUploadBtn = el.querySelector('.btn-do-upload');
+        const fileInput = el.querySelector('.tp-file');
+        const uploadStatus = el.querySelector('.upload-status');
+        doUploadBtn.addEventListener('click', async () => {
+          if (!fileInput.files || fileInput.files.length === 0) { uploadStatus.innerText = 'เลือกไฟล์ก่อน'; return; }
+          uploadStatus.innerText = 'กำลังอ่านไฟล์...';
+          try {
+            const file = fileInput.files[0];
+            const dataUrl = await readFileAsDataURL(file);
+            const base64 = dataUrl.split(',')[1];
+            uploadStatus.innerText = 'กำลังอัพโหลด...';
+            const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'upload_image', job_rn: job.rn || job.jobId, fileName: file.name, mimeType: file.type, data: base64, actorId: sessionStorage.getItem('userId'), actorRole: 'tailor' }) });
+            const j = await res.json();
+            if (j && j.status === 'ok' || j.status === 'success') {
+              uploadStatus.innerText = 'อัพโหลดสำเร็จ';
+              setTimeout(() => loadTailorJobs(), 800);
+            } else {
+              uploadStatus.innerText = 'อัพโหลดล้มเหลว';
+            }
+          } catch (e) { uploadStatus.innerText = 'เกิดข้อผิดพลาด'; }
+        });
+
+        document.getElementById('tp-job-list').appendChild(node);
+      }
+
+      // small helper to read files
+      function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.onerror = () => reject(r.error);
+          r.readAsDataURL(file);
+        });
+      }
+
+    });
+  </script>
+</body>
+</html>

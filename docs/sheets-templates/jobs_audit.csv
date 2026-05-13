@@ -1,0 +1,11 @@
+timestamp,jobId,actorId,actorRole,action,from_status,to_status,note
+2026-05-13T09:12:00Z,RN-20260513-0001,CUST-001,customer,create,,new,Created via web form
+2026-05-13T10:05:00Z,RN-20260513-0002,TAILOR-001,tailor,accept,new,assigned,Tailor accepted job
+2026-05-13T12:30:00Z,RN-20260513-0003,TAILOR-002,tailor,update_status,assigned,in_progress,Started working
+2026-05-14T08:00:00Z,RN-20260513-0004,TAILOR-001,tailor,accept,new,assigned,Accepted by tailor
+2026-05-14T09:00:00Z,RN-20260513-0004,TAILOR-001,tailor,update_status,assigned,sewing,Started sewing
+2026-05-14T12:30:00Z,RN-20260513-0006,TAILOR-003,tailor,update_status,sewing,finished,Completed and QA passed
+2026-05-14T13:00:00Z,RN-20260513-0006,ADMIN-001,boss,pay_final_price,finished,paid,Payment recorded
+2026-05-14T14:00:00Z,RN-20260513-0007,TAILOR-002,tailor,update_status,sewing,finished,Completed
+2026-05-14T15:00:00Z,RN-20260513-0010,TAILOR-001,tailor,update_status,assigned,finished,Quick fix and finished
+2026-05-14T16:00:00Z,RN-20260513-0003,TAILOR-002,tailor,upload_image,sewing,sewing,Progress photo uploaded

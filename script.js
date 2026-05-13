@@ -30,6 +30,46 @@ function runWhenIdle(fn, options = { timeout: 200 }) {
   return setTimeout(fn, options.timeout || 200);
 }
 
+// Validate customer job form inputs
+function validateJobForm() {
+  const name = (document.getElementById("customer_name").value || "").trim();
+  const phoneRaw = (document.getElementById("customer_phone").value || "").trim();
+  const detail = (document.getElementById("job_detail").value || "").trim();
+  const budgetRaw = (document.getElementById("budget").value || "").toString().trim();
+  const measurements = {
+    chest: (document.getElementById("m-chest")?.value || "").toString().trim(),
+    waist: (document.getElementById("m-waist")?.value || "").toString().trim(),
+    hips: (document.getElementById("m-hips")?.value || "").toString().trim(),
+    length: (document.getElementById("m-length")?.value || "").toString().trim(),
+    shoulder: (document.getElementById("m-shoulder")?.value || "").toString().trim()
+  };
+
+  const errors = [];
+
+  if (!name || name.length < 3) errors.push('กรุณาระบุชื่อ-นามสกุล (อย่างน้อย 3 ตัวอักษร)');
+
+  // Normalize phone: remove non-digits and check length 9-10 (Thai mobile usually 9-10 excluding 0?)
+  const phoneDigits = phoneRaw.replace(/\D/g, '');
+  if (!phoneDigits || phoneDigits.length < 9 || phoneDigits.length > 10) {
+    errors.push('กรุณาระบุหมายเลขโทรศัพท์ที่ถูกต้อง (ตัวเลข 9-10 หลัก)');
+  }
+
+  if (!detail || detail.length < 10) errors.push('รายละเอียดงานต้องอย่างน้อย 10 ตัวอักษร');
+
+  const budget = parseFloat(budgetRaw.replace(/,/g, ''));
+  if (Number.isNaN(budget) || budget <= 0) errors.push('กรุณาระบุงบประมาณเป็นตัวเลขมากกว่า 0');
+
+  // measurements optional but if provided must be non-negative numbers
+  Object.entries(measurements).forEach(([k, v]) => {
+    if (v !== '') {
+      const n = Number(v);
+      if (Number.isNaN(n) || n < 0) errors.push(`ค่าสัดส่วน '${k}' ต้องเป็นตัวเลขเท่ากับหรือมากกว่า 0`);
+    }
+  });
+
+  return { ok: errors.length === 0, errors };
+}
+
 async function sendData() {
   const btn = document.querySelector("#customer-view .btn-primary");
   
@@ -52,8 +92,10 @@ async function sendData() {
     })
   };
 
-  if (!data.customer_name || !data.customer_phone || !data.job_detail || !data.budget) {
-    alert("กรุณากรอกข้อมูลให้ครบถ้วน: ชื่อ, เบอร์โทร, รายละเอียดงาน และงบประมาณ");
+  // client-side validation
+  const validation = validateJobForm();
+  if (!validation.ok) {
+    alert('กรุณาตรวจสอบข้อมูล:\n- ' + validation.errors.join('\n- '));
     return;
   }
 
@@ -1857,6 +1899,62 @@ async function uploadProgressPhoto(id) {
       loadJobs('active', true);
     }
   } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
+// === Upload helper for Tailor UI (reads file and POSTs base64 to GAS) ===
+async function uploadJobImage() {
+  const jobId = document.getElementById('upload-job-id')?.value?.trim();
+  const fileInput = document.getElementById('upload-file');
+  const statusEl = document.getElementById('upload-status');
+
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    if (statusEl) statusEl.innerText = 'กรุณาเลือกไฟล์ก่อนอัพโหลด';
+    return;
+  }
+
+  const file = fileInput.files[0];
+  if (statusEl) statusEl.innerText = 'กำลังอ่านไฟล์...';
+
+  try {
+    const dataUrl = await readFileAsDataURL(file);
+    const comma = dataUrl.indexOf(',');
+    const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+
+    if (statusEl) statusEl.innerText = 'กำลังอัพโหลดไฟล์ไปยังเซิร์ฟเวอร์...';
+
+    const payload = {
+      action: 'upload_image',
+      job_rn: jobId || null,
+      fileName: file.name,
+      mimeType: file.type,
+      data: base64,
+      actorId: sessionStorage.getItem('userId') || localStorage.getItem('userId') || 'unknown',
+      actorRole: sessionStorage.getItem('userRole') || localStorage.getItem('userRole') || 'tailor'
+    };
+
+    const res = await apiPost(payload);
+    if (res && res.status === 'success') {
+      if (statusEl) statusEl.innerText = 'อัพโหลดสำเร็จ';
+      // refresh jobs view lightly
+      setTimeout(() => {
+        try { loadJobs('pending', true); } catch (e) { /* ignore */ }
+      }, 700);
+    } else {
+      if (statusEl) statusEl.innerText = 'อัพโหลดล้มเหลว: ' + (res && res.message ? res.message : 'ไม่ทราบสาเหตุ');
+    }
+  } catch (err) {
+    console.error('uploadJobImage error', err);
+    if (statusEl) statusEl.innerText = 'เกิดข้อผิดพลาดในการอ่านหรืออัพโหลดไฟล์';
+  }
+}
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (e) => reject(e);
+    reader.readAsDataURL(file);
+  });
 }
 
 // === Boss: เพิ่มรายการสต๊อกใหม่ (WI-B02, action=add_stock) ===

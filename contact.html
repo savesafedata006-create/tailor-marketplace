@@ -129,5 +129,38 @@
       </div>
     </div>
   </div>
+  <!-- Floating Admin Access -->
+  <div id="admin-fab" style="position:fixed; right:18px; bottom:18px; z-index:9999;">
+    <button id="admin-fab-btn" class="btn-pill" style="padding:10px 12px; display:flex; align-items:center; gap:8px;"><i class="fas fa-tools"></i> Admin</button>
+    <div id="admin-fab-menu" style="display:none; position:absolute; right:0; bottom:56px;">
+      <a href="tailor.html" class="btn-secondary" style="display:block; margin-bottom:6px;">แดชบอร์ด</a>
+      <a href="stock.html" class="btn-secondary" style="display:block; margin-bottom:6px;">คลังสินค้า</a>
+      <a href="#" class="btn-secondary" onclick="becomeDemoBoss()" style="display:block; margin-bottom:6px;">เข้าสู่ระบบ (Demo Boss)</a>
+      <a href="index.html" class="btn-secondary" style="display:block;">กลับหน้าเว็บ</a>
+    </div>
+  </div>
+  <script>
+    (function(){
+      const btn = document.getElementById('admin-fab-btn');
+      const menu = document.getElementById('admin-fab-menu');
+      if (!btn || !menu) return;
+      const role = sessionStorage.getItem('userRole') || localStorage.getItem('userRole') || 'guest';
+      if (role !== 'boss') {
+        document.getElementById('admin-fab').style.display = 'none';
+      } else {
+        btn.addEventListener('click', () => { menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; });
+        document.addEventListener('click', (e) => { if (!btn.contains(e.target) && !menu.contains(e.target)) menu.style.display = 'none'; });
+      }
+    })();
+    function becomeDemoBoss() {
+      sessionStorage.setItem('userRole', 'boss');
+      sessionStorage.setItem('userName', 'Demo Boss');
+      sessionStorage.setItem('userId', 'ADMIN-001');
+      localStorage.setItem('userRole', 'boss');
+      localStorage.setItem('userName', 'Demo Boss');
+      localStorage.setItem('userId', 'ADMIN-001');
+      location.href = 'tailor.html';
+    }
+  </script>
 </body>
 </html>

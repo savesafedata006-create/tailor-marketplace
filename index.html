@@ -30,7 +30,7 @@
       </div>
       <nav class="main-nav">
         <a href="index.html" class="active">หน้าแรก</a>
-        <a href="present.html">วิธีใช้งาน</a>
+        <span class="nav-text disabled">วิธีใช้งาน</span>
         <a href="portfolio.html">ผลงาน</a>
         <a href="contact.html">ติดต่อเรา</a>
       </nav>
@@ -50,6 +50,12 @@
           <div class="portal-dropdown" id="portal-dropdown">
             <a href="tailor.html" class="dropdown-item"><i class="fas fa-lock"></i> Admin Login</a>
           </div>
+        </div>
+        <!-- Demo role quick-switch (visible in demo build) -->
+        <div id="demo-role-buttons" style="display:flex; gap:8px; margin-left:12px; align-items:center;">
+          <button class="btn-secondary" onclick="becomeDemoCustomer()" title="เข้าสู่ระบบ (Demo Customer)" style="padding:6px 8px;">ลูกค้า</button>
+          <button class="btn-secondary" onclick="becomeDemoTailor()" title="เข้าสู่ระบบ (Demo Tailor)" style="padding:6px 8px;">ช่าง</button>
+          <button class="btn-secondary" onclick="becomeDemoBoss()" title="เข้าสู่ระบบ (Demo Boss)" style="padding:6px 8px;">บอส</button>
         </div>
       </div>
     </header>
@@ -309,6 +315,7 @@
     <div id="admin-fab-menu" class="admin-fab-menu" style="display:none; position:absolute; right:0; bottom:56px;">
       <a href="tailor.html" class="btn-secondary" style="display:block; margin-bottom:6px;">แดชบอร์ด</a>
       <a href="stock.html" class="btn-secondary" style="display:block; margin-bottom:6px;">คลังสินค้า</a>
+      <a href="#" class="btn-secondary" onclick="becomeDemoBoss()" style="display:block; margin-bottom:6px;">เข้าสู่ระบบ (Demo Boss)</a>
       <a href="index.html" class="btn-secondary" style="display:block;">กลับหน้าเว็บ</a>
     </div>
   </div>
@@ -323,12 +330,65 @@
       checkCustomerAuth();
       if (typeof initScrollReveal === 'function') initScrollReveal();
       if (typeof initPortalLongPress === 'function') initPortalLongPress();
+      // If no login (guest), show the order form directly so customers can submit jobs
+      const _role = sessionStorage.getItem('userRole') || localStorage.getItem('userRole') || 'guest';
+      if (!_role || _role === 'guest') {
+        // hide auth notice and show customer view order tab
+        const authView = document.getElementById('auth-view');
+        const customerView = document.getElementById('customer-view');
+        if (authView) authView.style.display = 'none';
+        if (customerView) customerView.style.display = 'block';
+        if (typeof switchCustomerTab === 'function') {
+          try { switchCustomerTab('order'); } catch (e) { /* ignore */ }
+        }
+      }
       const fabBtn = document.getElementById('admin-fab-btn');
       const fabMenu = document.getElementById('admin-fab-menu');
+      // Show FAB only for boss role
+      const currentRole = sessionStorage.getItem('userRole') || localStorage.getItem('userRole') || 'guest';
       if (fabBtn && fabMenu) {
-        fabBtn.addEventListener('click', () => { fabMenu.style.display = fabMenu.style.display === 'block' ? 'none' : 'block'; });
-        document.addEventListener('click', (e) => { if (!fabBtn.contains(e.target) && !fabMenu.contains(e.target)) fabMenu.style.display = 'none'; });
+        if (currentRole !== 'boss') {
+          // hide FAB for non-boss
+          document.getElementById('admin-fab').style.display = 'none';
+        } else {
+          document.getElementById('admin-fab').style.display = 'block';
+          fabBtn.addEventListener('click', () => { fabMenu.style.display = fabMenu.style.display === 'block' ? 'none' : 'block'; });
+          document.addEventListener('click', (e) => { if (!fabBtn.contains(e.target) && !fabMenu.contains(e.target)) fabMenu.style.display = 'none'; });
+        }
       }
+      // Demo helpers to switch roles quickly for testing/demo
+      window.becomeDemoBoss = function() {
+        sessionStorage.setItem('userRole', 'boss');
+        sessionStorage.setItem('userName', 'Demo Boss');
+        sessionStorage.setItem('userId', 'ADMIN-001');
+        // persist in localStorage optionally for demo convenience
+        localStorage.setItem('userRole', 'boss');
+        localStorage.setItem('userName', 'Demo Boss');
+        localStorage.setItem('userId', 'ADMIN-001');
+        location.href = 'tailor.html';
+      };
+
+      window.becomeDemoTailor = function() {
+        sessionStorage.setItem('userRole', 'tailor');
+        sessionStorage.setItem('userName', 'Demo Tailor');
+        sessionStorage.setItem('userId', 'TAILOR-001');
+        localStorage.setItem('userRole', 'tailor');
+        localStorage.setItem('userName', 'Demo Tailor');
+        localStorage.setItem('userId', 'TAILOR-001');
+        // go to tailor dashboard (will prompt login overlay if needed)
+        location.href = 'tailor.html';
+      };
+
+      window.becomeDemoCustomer = function() {
+        sessionStorage.setItem('userRole', 'customer');
+        sessionStorage.setItem('userName', 'Demo Customer');
+        sessionStorage.setItem('userId', 'CUST-DEM-001');
+        localStorage.setItem('userRole', 'customer');
+        localStorage.setItem('userName', 'Demo Customer');
+        localStorage.setItem('userId', 'CUST-DEM-001');
+        // show customer view immediately
+        try { checkCustomerAuth(); switchCustomerTab && switchCustomerTab('order'); } catch(e) { }
+      };
     });
   </script>
 </body>

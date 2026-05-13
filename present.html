@@ -94,6 +94,16 @@
   </style>
 </head>
 <body>
+  <script>
+    // Restrict this SOP/WI page to boss or tailor roles only (client-side guard for convenience)
+    (function(){
+      const role = sessionStorage.getItem('userRole') || localStorage.getItem('userRole') || 'guest';
+      if (role !== 'boss' && role !== 'tailor') {
+        // Non-staff visitors are redirected to the public homepage
+        try { location.replace('index.html'); } catch(e){ /* ignore */ }
+      }
+    })();
+  </script>
   <div class="container">
     <header class="main-header">
       <div class="brand">
@@ -114,6 +124,7 @@
     <section class="view">
       <div class="section-header">
         <h2><i class="fas fa-sitemap"></i> คู่มือ SOP/WI และผังระบบ</h2>
+      <!-- Admin FAB removed: this is a showcase-only SOP/WI page -->
         <p>ขั้นตอนการทำงานมาตรฐาน (Standard Operating Procedure) ครอบคลุมทุก Role และระบบหลังบ้าน</p>
       </div>
 
