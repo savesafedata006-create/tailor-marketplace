@@ -1,486 +1,589 @@
+/**
+ * TailorHub Marketplace - Backend System (Google Apps Script)
+ * รองรับระบบ Boss, Tailor และ Customer ตาม SOP/WI
+ */
+
+const SCRIPT_VERSION = "1.0.0";
+const SHOP_NAME = "TailorHub Premium";
+
+// ชื่อของ Sheet ต่างๆ ในระบบ
+const SHEETS = {
+  JOBS: 'JOBS',
+  USERS: 'USERS',
+  STOCK: 'STOCK',
+  LOGS: 'LOGS',
+  PAYROLL: 'PAYROLL',
+  CONFIG: 'CONFIG',
+  MEASUREMENTS: 'MEASUREMENTS',
+  ATTENDANCE: 'ATTENDANCE'
+};
+
+/**
+ * GET Request: ดึงข้อมูลทั้งหมดของระบบเพื่อนำไปแสดงผลบน Dashboard
+ */
 function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  initDatabase(ss); // ตรวจสอบและสร้างตารางถ้ายังไม่มี
   
-  // 1. ตรวจสอบ/สร้างแผ่นงาน JOBS
-  let jobsSheet = ss.getSheetByName("JOBS") || ss.insertSheet("JOBS");
-  if (jobsSheet.getLastRow() === 0) {
-    jobsSheet.appendRow(["id", "rn", "customer_name", "customer_phone", "customer_line", "job_detail", "job_category", "budget", "status", "tailor_name", "user_id", "created_at", "cancellation_reason", "rating", "material_cost", "measurements", "progress_photo", "dispute_notes"]);
-  }
-
-  // 2. ตรวจสอบ/สร้างแผ่นงาน USERS
-  let userSheet = ss.getSheetByName("USERS") || ss.insertSheet("USERS"); 
-  if (userSheet.getLastRow() === 0) {
-    userSheet.appendRow(["user_id", "username", "password", "role", "full_name", "phone"]);
-    userSheet.appendRow([Utilities.getUuid(), "admin", "1234", "boss", "เจ้าของร้าน", "0000000000"]);
-  }
-
-  // 3. ตรวจสอบ/สร้างแผ่นงาน STOCK
-  let stockSheet = ss.getSheetByName("STOCK") || ss.insertSheet("STOCK"); 
-  if (stockSheet.getLastRow() === 0) {
-    stockSheet.appendRow(["item_id", "category", "item_name", "quantity", "unit", "unit_price", "min_threshold", "last_updated"]);
-    stockSheet.appendRow(["STK-001", "ผ้า", "ผ้าไหม", "50", "เมตร", "500", "10", new Date()]);
-  }
-
-  // 4. ตรวจสอบ/สร้างแผ่นงาน LOGS
-  let logSheet = ss.getSheetByName("LOGS") || ss.insertSheet("LOGS"); 
-  if (logSheet.getLastRow() === 0) {
-    logSheet.appendRow(["timestamp", "user_id", "username", "action", "details", "status"]);
-  }
-
-  // 5. ตรวจสอบ/สร้างแผ่นงาน PAYROLL
-  let paySheet = ss.getSheetByName("PAYROLL") || ss.insertSheet("PAYROLL"); 
-  if (paySheet.getLastRow() === 0) {
-    paySheet.appendRow(["pay_id", "user_id", "username", "gross_amount", "tax_3", "net_amount", "cycle", "status", "timestamp"]);
-  }
-
-  // 6. ตรวจสอบ/สร้างแผ่นงาน CONFIG
-  let configSheet = ss.getSheetByName("CONFIG") || ss.insertSheet("CONFIG"); 
-  if (configSheet.getLastRow() === 0) {
-    configSheet.appendRow(["key", "value"]);
-    configSheet.appendRow(["line_token", ""]);
-  }
-
-  // 7. ตรวจสอบ/สร้างแผ่นงาน MEASUREMENTS
-  let measureSheet = ss.getSheetByName("MEASUREMENTS") || ss.insertSheet("MEASUREMENTS");
-  if (measureSheet.getLastRow() === 0) {
-    measureSheet.appendRow(["user_id", "chest", "waist", "hips", "length", "shoulder", "last_updated"]);
-  }
-
-  const response = {
-    jobs: getSheetData(ss, "JOBS"),
-    stock: getSheetData(ss, "STOCK"),
-    users: getSheetData(ss, "USERS"),
-    payroll: getSheetData(ss, "PAYROLL"),
-    measurements: getSheetData(ss, "MEASUREMENTS")
+  const data = {
+    jobs: getSheetData(ss, SHEETS.JOBS),
+    users: getSheetData(ss, SHEETS.USERS, true), // ซ่อนรหัสผ่าน
+    stock: getSheetData(ss, SHEETS.STOCK),
+    payroll: getSheetData(ss, SHEETS.PAYROLL),
+    measurements: getSheetData(ss, SHEETS.MEASUREMENTS),
+    logs: getSheetData(ss, SHEETS.LOGS).slice(-50).reverse(), // 50 รายการล่าสุด
+    serverTime: new Date().toISOString()
   };
-
-  return ContentService.createTextOutput(JSON.stringify(response))
+  
+  return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+/**
+ * POST Request: จัดการ Action ต่างๆ จากฝั่ง Frontend
+ */
 function doPost(e) {
+  let postData;
+  try {
+    postData = JSON.parse(e.postData.contents);
+  } catch (f) {
+    return response({ status: "error", message: "Invalid JSON format" });
+  }
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const action = postData.action;
   
-  // ป้องกัน Error เมื่อมีการเรียกใช้โดยไม่มีข้อมูลส่งมา (เช่น การกด Run ใน Editor)
-  if (!e || !e.postData) {
-    return createResponse({ status: "error", message: "No data received. Please access via Web App URL." });
-  }
-
-  const content = JSON.parse(e.postData.contents);
-  
-  // 1. สร้างงานใหม่
-  if (content.action === "create") {
-    const sheet = ss.getSheetByName("JOBS"); // ต้องมีอยู่แล้วจาก doGet
-    const id = Utilities.getUuid();
-    const rn = "RN-" + Math.floor(1000 + Math.random() * 9000) + "-" + Date.now().toString().slice(-4);
-    sheet.appendRow([id, rn, content.customer_name, content.customer_phone, content.customer_line, content.job_detail, content.job_category, content.budget, "pending", "", content.user_id || "GUEST", new Date(), "", "", "", content.measurements || "", "", ""]);
-    sendNotify(ss, `🆕 มีงานจ้างใหม่!\n📌 เลขที่: ${rn}\n👤 ลูกค้า: ${content.customer_name}\n📞 โทร: ${content.customer_phone}\n📝 รายละเอียด: ${content.job_detail}\n💰 งบประมาณ: ฿${Number(content.budget).toLocaleString()}`);
-    return createResponse({ status: "success", id: id, rn: rn });
-  }
-  
-  // 2. อัปเดตสถานะงาน
-  if (content.action === "update_status") {
-    const sheet = ss.getSheetByName("JOBS"); // ต้องมีอยู่แล้วจาก doGet
-    const data = sheet.getDataRange().getValues();
-    let jobRow = -1;
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] == content.id) {
-        sheet.getRange(i + 1, 9).setValue(content.status);
-        if (content.tailor_name) sheet.getRange(i + 1, 10).setValue(content.tailor_name);
-        
-        // ระบบแจ้งเตือน LINE เฉพาะเมื่อสถานะเป็น Finished
-        if (content.status === "finished") {
-          sendNotify(ss, `✅ งานเสร็จแล้ว!\n📌 เลขที่: ${data[i][1]}\n👤 ลูกค้า: ${data[i][2]}\n👨‍🔧 ช่าง: ${content.tailor_name || "ไม่ระบุ"}\n📦 พร้อมสำหรับการส่งมอบหรือรับสินค้า`);
-        }
-
-        // บันทึกรูปถ่ายความคืบหน้า (ถ้ามี)
-        if (content.progress_photo) sheet.getRange(i + 1, 17).setValue(content.progress_photo);
-
-        // บันทึกหมายเหตุการเคลม/แก้ไข (ถ้ามี)
-        if (content.dispute_notes) sheet.getRange(i + 1, 18).setValue(content.dispute_notes);
-        
-        
-        // บันทึก Log การเปลี่ยนสถานะ
-        const logDetails = `เปลี่ยนสถานะงาน ${data[i][1]} เป็น ${content.status}`;
-        logEvent(ss, content.admin_id || "SYSTEM", content.tailor_name || "SYSTEM", "UPDATE_STATUS", logDetails, "success");
-
-        
-        // บันทึกคะแนน (Rating) ถ้ามีการส่งมา
-        if (content.rating) {
-          sheet.getRange(i + 1, 14).setValue(content.rating); // คอลัมน์ที่ 14
-        }
-        
-        // แจ้งเตือนกรณีงานไม่สำเร็จ
-        if (content.status === "cancelled" || content.status === "rejected") {
-          const reason = content.cancellation_reason || "ไม่ได้ระบุ";
-          sheet.getRange(i + 1, 13).setValue(reason);
-          const prefix = content.status === "cancelled" ? "❌ งานถูกยกเลิก" : "🚫 ปฏิเสธงาน";
-          sendNotify(ss, `${prefix}!\n📌 เลขที่: ${data[i][1]}\n👤 ลูกค้า: ${data[i][2]}\n📝 เหตุผล: ${reason}`);
-        }
-        jobRow = i;
-        break;
-      }
-    }
-    // หักสต็อกและคำนวณต้นทุนวัสดุ
-    if (content.status === "accepted" && content.stock_id && jobRow > -1) {
-      const sSheet = ss.getSheetByName("STOCK"); // ต้องมีอยู่แล้วจาก doGet
-      const sData = sSheet.getDataRange().getValues();
-      const sHeaders = sData[0];
-      const priceIdx = sHeaders.indexOf("unit_price");
-
-      for (let j = 1; j < sData.length; j++) {
-        if (sData[j][0] == content.stock_id) {
-          const qtyUsed = Number(content.stock_qty);
-          const unitPrice = Number(sData[j][priceIdx]) || 0;
-          const materialCost = qtyUsed * unitPrice;
-
-          // หักสต็อก
-          const newQty = Number(sData[j][3]) - qtyUsed;
-          sSheet.getRange(j + 1, 4).setValue(newQty);
-          sSheet.getRange(j + 1, 8).setValue(new Date());
-          // บันทึกต้นทุนวัสดุลงในแผ่นงาน JOBS (คอลัมน์ที่ 15)
-          sheet.getRange(jobRow + 1, 15).setValue(materialCost);
-
-          if (newQty <= Number(sData[j][6])) {
-            sendNotify(ss, `⚠️ เตือน: วัสดุใกล้หมด!\n📦 วัสดุ: ${sData[j][2]}\n📉 คงเหลือ: ${newQty} ${sData[j][4]}`);
-          }
-          break;
-        }
-      }
-    }
-    return createResponse({ status: "success" });
-  }
-
-  // 3. ลงทะเบียน
-  if (content.action === "register") {
-    const uSheet = ss.getSheetByName("USERS"); // ต้องมีอยู่แล้วจาก doGet
-    const uData = uSheet.getDataRange().getValues();
-    for (let i = 1; i < uData.length; i++) {
-      if (uData[i][1] === content.username) return createResponse({ status: "error", message: "ชื่อผู้ใช้งานนี้ถูกใช้ไปแล้ว" });
-    }
-    const uId = "U-" + Utilities.getUuid().slice(0, 8).toUpperCase();
-    uSheet.appendRow([uId, content.username, content.password, "customer", content.full_name, content.phone]);
-    sendNotify(ss, `👤 มีสมาชิกใหม่ลงทะเบียน!\n🆔 User ID: ${uId}\n📛 ชื่อ: ${content.full_name}`);
-    return createResponse({ status: "success", user: { user_id: uId, username: content.username, role: "customer", full_name: content.full_name } });
-  }
-
-  // 4. ล็อกอิน
-  if (content.action === "login") {
-    const uSheet = ss.getSheetByName("USERS"); // ต้องมีอยู่แล้วจาก doGet
-    const uData = uSheet.getDataRange().getValues();
-    for (let i = 1; i < uData.length; i++) {
-      if (uData[i][1] === content.username && uData[i][2].toString() === content.password.toString()) {
-        if (uData[i][3] === "boss") sendNotify(ss, `🔐 แจ้งเตือน: มีการเข้าสู่ระบบ BOSS\n👤 User: ${content.username}`);
-        return createResponse({ status: "success", user: { user_id: uData[i][0], username: uData[i][1], role: uData[i][3], full_name: uData[i][4] } });
-      }
-    }
-    return createResponse({ status: "error", message: "Username หรือ Password ไม่ถูกต้อง" });
-  }
-
-  // 5. เบิกเงิน (Request Payroll)
-  if (content.action === "request_payment") {
-    const pSheet = ss.getSheetByName("PAYROLL"); // ต้องมีอยู่แล้วจาก doGet
-    const gross = parseFloat(content.amount);
-    const tax = gross * 0.03;
-    pSheet.appendRow(["PAY-" + Utilities.getUuid().slice(0, 8).toUpperCase(), content.user_id, content.username, gross, tax, gross - tax, content.cycle, "pending", new Date()]);
-    return createResponse({ status: "success" });
-  }
-
-  // 6. อนุมัติเบิกเงิน
-  if (content.action === "approve_payment") {
-    const pSheet = ss.getSheetByName("PAYROLL"); // ต้องมีอยู่แล้วจาก doGet
-    const pData = pSheet.getDataRange().getValues();
-    for (let i = 1; i < pData.length; i++) {
-      if (pData[i][0] === content.pay_id) {
-        pSheet.getRange(i + 1, 8).setValue("approved");
-        break;
-      }
-    }
-    return createResponse({ status: "success" });
-  }
-
-  // 7. รีเซ็ตรหัสผ่าน
-  if (content.action === "reset_password") {
-    const uSheet = ss.getSheetByName("USERS"); // ต้องมีอยู่แล้วจาก doGet
-    const uData = uSheet.getDataRange().getValues();
-    for (let i = 1; i < uData.length; i++) {
-      if (uData[i][1] === content.username && uData[i][5].toString() === content.phone.toString()) {
-        uSheet.getRange(i + 1, 3).setValue(content.new_password);
-        logEvent(ss, uData[i][0], content.username, "RESET_PASSWORD", "สำเร็จ", "success");
-        sendNotify(ss, `🔐 แจ้งเตือน: กู้คืนรหัสผ่านสำเร็จ\n👤 ผู้ใช้งาน: ${content.username}`);
-        return createResponse({ status: "success" });
-      }
-    }
-    return createResponse({ status: "error", message: "ข้อมูลไม่ถูกต้อง" });
-  }
-
-  // 8. เปลี่ยนสิทธิ์ (Update Role)
-  if (content.action === "update_role") {
-    const uSheet = ss.getSheetByName("USERS"); // ต้องมีอยู่แล้วจาก doGet
-    const uData = uSheet.getDataRange().getValues();
-    for (let i = 1; i < uData.length; i++) {
-      if (uData[i][0].toString() === content.user_id.toString()) {
-        uSheet.getRange(i + 1, 4).setValue(content.role);
-        logEvent(ss, content.admin_id, content.admin_name, "UPDATE_ROLE", `เปลี่ยนสิทธิ์ ${uData[i][1]} เป็น ${content.role}`, "success");
-        break;
-      }
-    }
-    return createResponse({ status: "success" });
-  }
-
-  // 9. เปลี่ยนรหัสผ่าน (Change Password)
-  if (content.action === "change_password") {
-    const uSheet = ss.getSheetByName("USERS"); // ต้องมีอยู่แล้วจาก doGet
-    const uData = uSheet.getDataRange().getValues();
-    for (let i = 1; i < uData.length; i++) {
-      if (uData[i][0].toString() === content.user_id.toString()) {
-        if (uData[i][2].toString() === content.old_password.toString()) {
-          uSheet.getRange(i + 1, 3).setValue(content.new_password);
-          logEvent(ss, content.user_id, uData[i][1], "CHANGE_PASSWORD", "สำเร็จ", "success");
-          sendNotify(ss, `🔐 แจ้งเตือน: เปลี่ยนรหัสผ่านสำเร็จ\n👤 ผู้ใช้งาน: ${uData[i][1]}`);
-          return createResponse({ status: "success" });
-        }
-        return createResponse({ status: "error", message: "รหัสผ่านเดิมไม่ถูกต้อง" });
-      }
-    }
-    return createResponse({ status: "error", message: "ไม่พบผู้ใช้" });
-  }
-
-  // 10. อัปเดตสต็อก (BOSS เท่านั้น)
-  if (content.action === "update_stock") {
-    const sSheet = ss.getSheetByName("STOCK"); // ต้องมีอยู่แล้วจาก doGet
-    const sData = sSheet.getDataRange().getValues();
-    for (let i = 1; i < sData.length; i++) {
-      if (sData[i][0] == content.id) {
-        sSheet.getRange(i + 1, 4).setValue(content.quantity);
-        sSheet.getRange(i + 1, 8).setValue(new Date());
-        break;
-      }
-    }
-    return createResponse({ status: "success" });
-  }
-
-  // 11. เพิ่มรายการสต๊อก
-  if (content.action === "add_stock") {
-    const sSheet = ss.getSheetByName("STOCK");
-    const itemId = "STK-" + Utilities.getUuid().slice(0, 6).toUpperCase();
-    sSheet.appendRow([itemId, content.category, content.item_name, Number(content.quantity), content.unit, Number(content.unit_price), Number(content.min_threshold) || 5, new Date()]);
-    return createResponse({ status: "success", item_id: itemId });
-  }
-
-  // 12. อัปเดตโปรไฟล์ลูกค้า
-  if (content.action === "update_profile") {
-    const uSheet = ss.getSheetByName("USERS");
-    const uData = uSheet.getDataRange().getValues();
-    for (let i = 1; i < uData.length; i++) {
-      if (uData[i][0].toString() === content.user_id.toString()) {
-        uSheet.getRange(i + 1, 5).setValue(content.full_name);
-        uSheet.getRange(i + 1, 6).setValue(content.phone);
-        if (content.line) uSheet.getRange(i + 1, 7).setValue(content.line);
-        return createResponse({ status: "success" });
-      }
-    }
-    return createResponse({ status: "error", message: "ไม่พบผู้ใช้" });
-  }
-
-  // 13. ลูกค้าชำระเงินงวดสุดท้าย
-  if (content.action === "pay_final_price") {
-    const sheet = ss.getSheetByName("JOBS");
-    const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] == content.id) {
-        sheet.getRange(i + 1, 9).setValue("paid");
-        logEvent(ss, "CUSTOMER", data[i][2], "PAY_FINAL", `ชำระเงินงาน ${data[i][1]} สำเร็จ`, "success");
-        break;
-      }
-    }
-    return createResponse({ status: "success" });
-  }
-
-  // 14. บอสกำหนดค่าใช้จ่ายเพิ่มเติม
-  if (content.action === "update_additional_cost") {
-    const sheet = ss.getSheetByName("JOBS");
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    const budgetIdx = headers.indexOf("budget");
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] == content.id) {
-        const finalPrice = (Number(data[i][budgetIdx]) || 0) + Number(content.additional_cost);
-        sheet.getRange(i + 1, 8).setValue(finalPrice);
-        logEvent(ss, "BOSS", "admin", "UPDATE_COST", `อัปเดตค่าใช้จ่ายเพิ่มเติมงาน ${data[i][1]}: +฿${content.additional_cost}`, "success");
-        break;
-      }
-    }
-    return createResponse({ status: "success" });
-  }
-
-  // 15. อัปเดตสัดส่วนลูกค้า (Update Measurements)
-  if (content.action === "update_measurements") {
-    const mSheet = ss.getSheetByName("MEASUREMENTS");
-    const mData = mSheet.getDataRange().getValues();
-    let found = false;
-    for (let i = 1; i < mData.length; i++) {
-      if (mData[i][0] == content.user_id) {
-        mSheet.getRange(i + 1, 2, 1, 5).setValues([[content.chest, content.waist, content.hips, content.length, content.shoulder]]);
-        mSheet.getRange(i + 1, 7).setValue(new Date());
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      mSheet.appendRow([content.user_id, content.chest, content.waist, content.hips, content.length, content.shoulder, new Date()]);
-    }
-    return createResponse({ status: "success" });
+  switch (action) {
+    case 'login':
+      return handleLogin(ss, postData);
+    case 'register':
+      return handleRegister(ss, postData);
+    case 'create': // สร้างงานจ้างใหม่
+      return handleCreateJob(ss, postData);
+    case 'update_status': // อัปเดตสถานะงาน (รับงาน/เย็บ/เสร็จ)
+      return handleUpdateStatus(ss, postData);
+    case 'update_stock': // บอสแก้ไขจำนวนสต็อก
+      return handleUpdateStock(ss, postData);
+    case 'add_stock': // บอสเพิ่มวัสดุใหม่
+      return handleAddStock(ss, postData);
+    case 'update_role': // บอสจัดการสิทธิ์ผู้ใช้
+      return handleUpdateRole(ss, postData);
+    case 'request_payment': // ช่างขอเบิกเงิน
+      return handleRequestPayment(ss, postData);
+    case 'approve_payment': // บสอนุมัติเงินเดือน
+      return handleApprovePayment(ss, postData);
+    case 'update_additional_cost': // บอสปรับราคา/เพิ่มค่าใช้จ่าย
+      return handleUpdateCost(ss, postData);
+    case 'upload_image': // ช่างอัปโหลดรูปงาน
+      return handleUploadImage(ss, postData);
+    case 'reset_password':
+      return handleResetPassword(ss, postData);
+    case 'change_password':
+      return handleChangePassword(ss, postData);
+    case 'update_profile':
+      return handleUpdateProfile(ss, postData);
+    case 'update_measurements':
+      return handleUpdateMeasurements(ss, postData);
+    case 'pay_final_price':
+      return handlePayFinal(ss, postData);
+    case 'edit_stock': // บอสแก้ไขรายละเอียดสต็อกทั้งหมด
+      return handleEditStock(ss, postData);
+    case 'delete_stock': // บอสลบรายการสต็อก
+      return handleDeleteStock(ss, postData);
+    case 'clock_work': // ระบบแจ้งเข้า-ออกงาน
+      return handleClockWork(ss, postData);
+    case 'request_leave': // ระบบแจ้งหยุดงาน
+      return handleRequestLeave(ss, postData);
+    default:
+      return response({ status: "error", message: "Action not found" });
   }
 }
 
-function getSheetData(ss, sheetName) {
+/* --- Action Handlers --- */
+
+function handleLogin(ss, data) {
+  const users = getSheetData(ss, SHEETS.USERS);
+  const user = users.find(u => u.username === data.username && u.password === data.password);
+  if (user) {
+    const { password, ...userPublic } = user;
+    if (user.role === 'boss') sendEmailNotify("🔐 Boss Login", `มีการเข้าสู่ระบบด้วยสิทธิ์ผู้ดูแลสูงสุด (${user.full_name})`);
+    return response({ status: "success", user: userPublic });
+  }
+  return response({ status: "error", message: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+}
+
+function handleRegister(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.USERS);
+  const rows = sheet.getDataRange().getValues();
+  
+  // ตรวจสอบ Username ซ้ำ
+  const exists = rows.some(r => r[1] === data.username);
+  if (exists) return response({ status: "error", message: "ชื่อผู้ใช้งานนี้ถูกใช้ไปแล้ว" });
+
+  const userId = "U-" + Math.floor(10000000 + Math.random() * 90000000);
+  const newUser = [userId, data.username, data.password, "customer", data.full_name, data.phone];
+  sheet.appendRow(newUser);
+  
+  logEvent(ss, userId, data.username, "REGISTER", "New user registered");
+  sendEmailNotify("👤 สมาชิกใหม่", `ชื่อ: ${data.full_name}\nUsername: ${data.username}`);
+  
+  return response({ status: "success", user: { user_id: userId, role: "customer", full_name: data.full_name } });
+}
+
+function handleCreateJob(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.JOBS);
+  const id = Utilities.getUuid();
+  const datePrefix = Utilities.formatDate(new Date(), "GMT+7", "yyyyMMdd");
+  const rn = `RN-${datePrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+  
+  const row = [
+    id, rn, data.customer_name, data.phone, data.line || "",
+    data.job_detail, data.category, data.budget, "pending",
+    "", data.user_id || "GUEST", new Date(), "", 0, 0, 
+    JSON.stringify(data.measurements || {}), "", ""
+  ];
+  
+  sheet.appendRow(row);
+  sendEmailNotify("🆕 งานจ้างใหม่", `ลูกค้า: ${data.customer_name}\nงาน: ${data.job_detail}\nงบประมาณ: ฿${data.budget}`);
+  return response({ status: "success", rn: rn, jobId: id });
+}
+
+function handleUpdateStatus(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.JOBS);
+  const rows = sheet.getDataRange().getValues();
+  let rowIndex = -1;
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.id || rows[i][1] === data.id) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+
+  if (rowIndex === -1) return response({ status: "error", message: "ไม่พบใบงาน" });
+
+  // จัดการเรื่อง Stock หากเป็นการ "รับงาน" (accepted)
+  if (data.status === 'accepted' && data.stock_id) {
+    deductStock(ss, data.stock_id, data.stock_qty || 1, rowIndex);
+  }
+
+  const currentStatus = rows[rowIndex-1][8];
+  if (data.status) sheet.getRange(rowIndex, 9).setValue(data.status);
+  if (data.tailor_name) sheet.getRange(rowIndex, 10).setValue(data.tailor_name);
+  if (data.progress_photo) sheet.getRange(rowIndex, 17).setValue(data.progress_photo);
+  if (data.cancellation_reason) sheet.getRange(rowIndex, 13).setValue(data.cancellation_reason);
+  if (data.rating) sheet.getRange(rowIndex, 14).setValue(data.rating);
+  if (data.dispute_notes) sheet.getRange(rowIndex, 18).setValue(data.dispute_notes);
+
+  logEvent(ss, data.actorId || "System", data.actorName || "System", "UPDATE_STATUS", `RN: ${rows[rowIndex-1][1]} (${currentStatus} -> ${data.status})`);
+  
+  if (data.status === 'finished') sendEmailNotify("✅ งานเสร็จแล้ว", `ใบงาน ${rows[rowIndex-1][1]} ตัดเย็บเสร็จเรียบร้อยพร้อมส่งมอบ`);
+  
+  return response({ status: "success" });
+}
+
+function handleUpdateStock(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.STOCK);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.item_id) {
+      sheet.getRange(i + 1, 4).setValue(data.quantity); // Qty
+      sheet.getRange(i + 1, 8).setValue(new Date()); // Last Updated
+      return response({ status: "success" });
+    }
+  }
+  return response({ status: "error", message: "ไม่พบสินค้า" });
+}
+
+function handleAddStock(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.STOCK);
+  const id = "STK-" + Math.floor(100000 + Math.random() * 900000);
+  sheet.appendRow([
+    id, data.category, data.item_name, data.quantity, 
+    data.unit, data.unit_price, data.min_threshold, new Date()
+  ]);
+  return response({ status: "success", item_id: id });
+}
+
+function handleUpdateRole(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.USERS);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.user_id) {
+      sheet.getRange(i + 1, 4).setValue(data.role);
+      logEvent(ss, data.admin_id, data.admin_name, "UPDATE_ROLE", `User: ${rows[i][1]} -> ${data.role}`);
+      return response({ status: "success" });
+    }
+  }
+  return response({ status: "error" });
+}
+
+function handleRequestPayment(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.PAYROLL);
+  const id = "PAY-" + Utilities.getUuid().substring(0,8).toUpperCase();
+  const gross = Number(data.amount);
+  const tax = gross * 0.03; // หักภาษี 3% ตาม WI
+  const net = gross - tax;
+  
+  sheet.appendRow([
+    id, data.user_id, data.username, gross, tax, net, data.cycle, "pending", new Date()
+  ]);
+  return response({ status: "success", pay_id: id });
+}
+
+function handleApprovePayment(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.PAYROLL);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.pay_id) {
+      sheet.getRange(i + 1, 8).setValue("approved");
+      return response({ status: "success" });
+    }
+  }
+  return response({ status: "error" });
+}
+
+function handleUpdateCost(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.JOBS);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.id || rows[i][1] === data.id) {
+      const currentBudget = Number(rows[i][7]);
+      const newBudget = currentBudget + Number(data.additional_cost);
+      sheet.getRange(i + 1, 8).setValue(newBudget);
+      logEvent(ss, "BOSS", "Admin", "UPDATE_COST", `RN: ${rows[i][1]} +${data.additional_cost}`);
+      return response({ status: "success", new_budget: newBudget });
+    }
+  }
+  return response({ status: "error" });
+}
+
+function handleResetPassword(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.USERS);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][1] === data.username && rows[i][5].toString() === data.phone.toString()) {
+      sheet.getRange(i + 1, 3).setValue(data.new_password);
+      logEvent(ss, rows[i][0], data.username, "RESET_PASSWORD", "User reset password via phone verification");
+      return response({ status: "success" });
+    }
+  }
+  return response({ status: "error", message: "ชื่อผู้ใช้หรือเบอร์โทรศัพท์ไม่ถูกต้อง" });
+}
+
+function handleChangePassword(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.USERS);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.user_id && rows[i][2] === data.old_password) {
+      sheet.getRange(i + 1, 3).setValue(data.new_password);
+      logEvent(ss, data.user_id, rows[i][1], "CHANGE_PASSWORD", "User changed their password");
+      return response({ status: "success" });
+    }
+  }
+  return response({ status: "error", message: "รหัสผ่านเดิมไม่ถูกต้อง" });
+}
+
+function handleUpdateProfile(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.USERS);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.user_id) {
+      if (data.full_name) sheet.getRange(i + 1, 5).setValue(data.full_name);
+      if (data.phone) sheet.getRange(i + 1, 6).setValue(data.phone);
+      // สมมติว่า Line ID อยู่คอลัมน์ที่ 7 (ถ้าเพิ่มในอนาคต)
+      return response({ status: "success" });
+    }
+  }
+  return response({ status: "error" });
+}
+
+function handleUpdateMeasurements(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.MEASUREMENTS);
+  const rows = sheet.getDataRange().getValues();
+  let rowIndex = -1;
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.user_id) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+  
+  const rowData = [data.user_id, data.chest, data.waist, data.hips, data.length, data.shoulder, new Date()];
+  if (rowIndex > -1) {
+    sheet.getRange(rowIndex, 1, 1, 7).setValues([rowData]);
+  } else {
+    sheet.appendRow(rowData);
+  }
+  return response({ status: "success" });
+}
+
+function handlePayFinal(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.JOBS);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.id) {
+      sheet.getRange(i + 1, 9).setValue("paid");
+      logEvent(ss, data.user_id, "Customer", "PAY_FINAL", `Payment received for RN: ${rows[i][1]}`);
+      return response({ status: "success" });
+    }
+  }
+  return response({ status: "error" });
+}
+
+function handleUploadImage(ss, data) {
+  // ในเวอร์ชันนี้ เราจะบันทึก URL รูปภาพลงในคอลัมน์ progress_photo ของ JOBS โดยตรง
+  // หากส่ง base64 มา จะต้องใช้ Google Drive API ในการบันทึกไฟล์ (แนะนำให้ส่งเป็น URL สำหรับ Demo)
+  const sheet = ss.getSheetByName(SHEETS.JOBS);
+  const rows = sheet.getDataRange().getValues();
+  const jobRn = data.job_rn;
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][1] === jobRn) {
+      // สมมติว่า data.data คือ URL หรือเราประมวลผลเป็นลิงก์แล้ว
+      sheet.getRange(i + 1, 17).setValue(data.image_url || data.data); 
+      logEvent(ss, data.actorId, "Staff", "UPLOAD_IMAGE", `Uploaded photo for ${jobRn}`);
+      return response({ status: "success" });
+    }
+  }
+  return response({ status: "error", message: "ไม่พบเลขที่ใบงาน (RN)" });
+}
+
+function handleEditStock(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.STOCK);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] == data.id) {
+      if (data.category    !== undefined) sheet.getRange(i+1,2).setValue(data.category);
+      if (data.item_name   !== undefined) sheet.getRange(i+1,3).setValue(data.item_name);
+      if (data.quantity    !== undefined) sheet.getRange(i+1,4).setValue(Number(data.quantity));
+      if (data.unit        !== undefined) sheet.getRange(i+1,5).setValue(data.unit);
+      if (data.unit_price  !== undefined) sheet.getRange(i+1,6).setValue(Number(data.unit_price));
+      if (data.min_threshold !== undefined) sheet.getRange(i+1,7).setValue(Number(data.min_threshold));
+      sheet.getRange(i+1,8).setValue(new Date());
+      logEvent(ss, data.admin_id||"BOSS", "boss", "EDIT_STOCK", `แก้ไขสต๊อก: ${data.item_name||rows[i][2]}`);
+      return response({ status: "success" });
+    }
+  }
+  return response({ status: "error", message: "ไม่พบรายการสต๊อก" });
+}
+
+function handleDeleteStock(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.STOCK);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] == data.id) {
+      const name = rows[i][2];
+      sheet.deleteRow(i+1);
+      logEvent(ss, data.admin_id||"BOSS", "boss", "DELETE_STOCK", `ลบสต๊อก: ${name} (${data.id})`);
+      return response({ status: "success" });
+    }
+  }
+  return response({ status: "error", message: "ไม่พบรายการสต๊อก" });
+}
+
+function handleClockWork(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.ATTENDANCE);
+  const id = "ATT-" + Utilities.getUuid().substring(0,8).toUpperCase();
+  // Columns: id, user_id, username, type (in/out), timestamp, note
+  sheet.appendRow([
+    id, data.user_id, data.username, data.type, new Date(), data.note || ""
+  ]);
+  
+  const typeText = data.type === 'in' ? "เข้างาน" : "ออกงาน";
+  logEvent(ss, data.user_id, data.username, "CLOCK_" + data.type.toUpperCase(), `พนักงานแจ้ง${typeText}`);
+  
+  return response({ status: "success", att_id: id });
+}
+
+function handleRequestLeave(ss, data) {
+  const sheet = ss.getSheetByName(SHEETS.ATTENDANCE);
+  const id = "LEV-" + Utilities.getUuid().substring(0,8).toUpperCase();
+  // Columns: id, user_id, username, type (leave), timestamp (start), note (reason)
+  sheet.appendRow([
+    id, data.user_id, data.username, "leave", data.start_date, data.reason || ""
+  ]);
+  
+  logEvent(ss, data.user_id, data.username, "REQUEST_LEAVE", `แจ้งหยุดงาน: ${data.reason}`);
+  sendEmailNotify("📅 แจ้งหยุดงาน", `พนักงาน: ${data.username}\nวันที่: ${data.start_date}\nเหตุผล: ${data.reason}`);
+  
+  return response({ status: "success", leave_id: id });
+}
+
+/* --- Helper Functions --- */
+
+function deductStock(ss, stockId, qtyUsed, jobRowIndex) {
+  const stockSheet = ss.getSheetByName(SHEETS.STOCK);
+  const stockData = stockSheet.getDataRange().getValues();
+  for (let j = 1; j < stockData.length; j++) {
+    if (stockData[j][0] === stockId) {
+      const currentQty = Number(stockData[j][3]);
+      const unitPrice = Number(stockData[j][5]);
+      const minThreshold = Number(stockData[j][6]);
+      const newQty = currentQty - qtyUsed;
+      
+      stockSheet.getRange(j + 1, 4).setValue(newQty);
+      stockSheet.getRange(j + 1, 8).setValue(new Date());
+      
+      // บันทึกต้นทุนวัสดุลงในใบงาน
+      const materialCost = qtyUsed * unitPrice;
+      ss.getSheetByName(SHEETS.JOBS).getRange(jobRowIndex, 15).setValue(materialCost);
+      
+      // แจ้งเตือนถ้าของใกล้หมด
+      if (newQty <= minThreshold) {
+        sendEmailNotify("⚠️ วัสดุใกล้หมดคลัง", `วัสดุ: ${stockData[j][2]} คงเหลือเพียง ${newQty} ${stockData[j][4]}`);
+      }
+      break;
+    }
+  }
+}
+
+function getSheetData(ss, sheetName, hidePassword = false) {
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return [];
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const result = [];
   
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 1) return []; // ป้องกัน error กรณีแผ่นงานว่างเปล่า
+  for (let i = 1; i < data.length; i++) {
+    const obj = {};
+    for (let j = 0; j < headers.length; j++) {
+      if (hidePassword && headers[j].toString().toLowerCase() === 'password') continue;
+      obj[headers[j]] = data[i][j];
+    }
+    result.push(obj);
+  }
+  return result;
+}
 
-  const values = sheet.getDataRange().getValues();
-  const headers = values[0];
-  return values.slice(1).map(row => {
-    let obj = {};
-    headers.forEach((h, i) => {
-      if (h.toLowerCase() === 'password') return;
-      let v = row[i];
-      if (v instanceof Date) v = v.toISOString();
-      obj[h] = v;
-    });
-    return obj;
+function response(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function logEvent(ss, userId, username, action, details) {
+  const sheet = ss.getSheetByName(SHEETS.LOGS);
+  sheet.appendRow([new Date(), userId, username, action, details, "success"]);
+}
+
+function sendEmailNotify(subject, body) {
+  try {
+    const adminEmail = Session.getActiveUser().getEmail();
+    if (adminEmail) {
+      MailApp.sendEmail({
+        to: adminEmail,
+        subject: `🔔 TailorHub แจ้งเตือน — ${subject}`,
+        body: body + `\n\nตรวจสอบข้อมูลได้ที่: ${ScriptApp.getService().getUrl()}`
+      });
+    }
+  } catch (e) {
+    console.error("Email failed: " + e.toString());
+  }
+}
+
+/**
+ * เริ่มต้นสร้างตารางข้อมูล (Run ครั้งเดียวตอนติดตั้ง)
+ */
+function initDatabase(ss) {
+  const sheetsConfig = [
+    { name: SHEETS.JOBS, headers: ['id', 'rn', 'customer_name', 'phone', 'line', 'job_detail', 'category', 'budget', 'status', 'tailor_name', 'user_id', 'created_at', 'cancellation_reason', 'rating', 'material_cost', 'measurements', 'progress_photo', 'dispute_notes'] },
+    { name: SHEETS.USERS, headers: ['user_id', 'username', 'password', 'role', 'full_name', 'phone'] },
+    { name: SHEETS.STOCK, headers: ['item_id', 'category', 'item_name', 'quantity', 'unit', 'unit_price', 'min_threshold', 'last_updated'] },
+    { name: SHEETS.LOGS, headers: ['timestamp', 'user_id', 'username', 'action', 'details', 'status'] },
+    { name: SHEETS.PAYROLL, headers: ['pay_id', 'user_id', 'username', 'gross_amount', 'tax_3', 'net_amount', 'cycle', 'status', 'timestamp'] },
+    { name: SHEETS.CONFIG, headers: ['key', 'value'] },
+    { name: SHEETS.MEASUREMENTS, headers: ['user_id', 'chest', 'waist', 'hips', 'length', 'shoulder', 'last_updated'] },
+    { name: SHEETS.ATTENDANCE, headers: ['log_id', 'user_id', 'username', 'type', 'timestamp', 'note'] }
+  ];
+
+  sheetsConfig.forEach(cfg => {
+    let s = ss.getSheetByName(cfg.name);
+    if (!s) {
+      s = ss.insertSheet(cfg.name);
+      s.appendRow(cfg.headers);
+      s.getRange(1, 1, 1, cfg.headers.length).setFontWeight("bold").setBackground("#f3f3f3");
+    }
   });
-}
-
-function sendNotify(ss, msg) {
-  // Primary: Email to script owner (always works, no config needed)
-  try {
-    const ownerEmail = Session.getActiveUser().getEmail();
-    if (ownerEmail) {
-      const subject = "🔔 TailorHub แจ้งเตือน — " + msg.split('\n')[0];
-      MailApp.sendEmail(ownerEmail, subject, msg);
-    }
-  } catch (e) {
-    Logger.log("Email notify failed: " + e.message);
-  }
-
-  // Secondary: LINE Notify (deprecated April 2025 — kept for legacy config)
-  try {
-    const cSheet = ss.getSheetByName("CONFIG");
-    if (!cSheet) return;
-    const data = cSheet.getDataRange().getValues();
-    let token = "";
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === "line_token") { token = data[i][1]; break; }
-    }
-    if (!token) return;
-    const options = { "method": "post", "headers": { "Authorization": "Bearer " + token }, "payload": { "message": "\n" + msg } };
-    UrlFetchApp.fetch("https://notify-api.line.me/api/notify", options);
-  } catch (e) {
-    Logger.log("LINE notify failed: " + e.message);
+  
+  // สร้าง Default Boss ถ้ายังไม่มีผู้ใช้เลย
+  const userSheet = ss.getSheetByName(SHEETS.USERS);
+  if (userSheet.getLastRow() === 1) {
+    userSheet.appendRow(['ADMIN-001', 'admin', '1234', 'boss', 'เจ้าของร้าน (Admin)', '0800000000']);
   }
 }
 
-function logEvent(ss, uId, uName, action, details, status) {
-  const lSheet = ss.getSheetByName("LOGS");
-  if (lSheet) lSheet.appendRow([new Date(), uId, uName, action, details, status]);
-}
-
-function createResponse(payload) {
-  return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
-}
-
-// ===================================================================
-// ฟังก์ชันเพิ่มข้อมูลตัวอย่าง — รัน 1 ครั้งจาก Apps Script Editor
-// Run this once from the Apps Script editor to seed sample data.
-// ===================================================================
+/**
+ * Seed ข้อมูลตัวอย่างสำหรับ Demo
+ */
 function seedSampleData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  doGet({}); // ensure all sheets exist
+  initDatabase(ss);
+  
+  // เพิ่มสต็อกตัวอย่าง
+  const stockSheet = ss.getSheetByName(SHEETS.STOCK);
+  if (stockSheet.getLastRow() === 1) {
+    stockSheet.appendRow(['STK-001', 'ผ้า', 'ผ้าคอตตอน 100%', 50, 'เมตร', 120, 10, new Date()]);
+    stockSheet.appendRow(['STK-002', 'ผ้า', 'ผ้าซิลค์ซาตินพรีเมียม', 20, 'เมตร', 450, 5, new Date()]);
+    stockSheet.appendRow(['STK-003', 'อะไหล่', 'กระดุมสูทพรีเมียม', 100, 'เม็ด', 15, 20, new Date()]);
+    stockSheet.appendRow(['STK-004', 'อะไหล่', 'ซิปซ่อน 22 นิ้ว', 40, 'เส้น', 25, 10, new Date()]);
+    stockSheet.appendRow(['STK-005', 'ผ้า', 'ผ้าวูล (Wool) สำหรับสูท', 15, 'เมตร', 1200, 3, new Date()]);
+    stockSheet.appendRow(['STK-006', 'อะไหล่', 'ซับในอย่างดี', 30, 'เมตร', 80, 5, new Date()]);
+  }
+  
+  // เพิ่มพนักงานตัวอย่าง
+  const userSheet = ss.getSheetByName(SHEETS.USERS);
+  if (userSheet.getLastRow() === 2) { // 2 เพราะมี Admin อยู่แล้ว
+    userSheet.appendRow(['TAILOR-001', 'tailor1', '1234', 'tailor', 'ช่างสมชาย', '0811111111']);
+    userSheet.appendRow(['TAILOR-002', 'tailor2', '1234', 'tailor', 'ช่างสมศรี', '0822222222']);
+    userSheet.appendRow(['CUST-001', 'customer1', '1234', 'customer', 'คุณวิภาวรรณ', '0833333333']);
+    userSheet.appendRow(['CUST-002', 'customer2', '1234', 'customer', 'คุณมานะศักดิ์', '0844444444']);
+  }
+  
+  // เพิ่มงานตัวอย่าง 10 รายการ (10 Use Cases)
+  const jobSheet = ss.getSheetByName(SHEETS.JOBS);
+  if (jobSheet.getLastRow() === 1) {
+    const now = new Date();
+    const jobs = [
+      // 1. งานเสร็จแล้ว ได้ Rating 5 ดาว
+      ['J-001', 'RN-20240501-001', 'คุณวิภาวรรณ', '0833333333', '@vipa', 'ชุดเดรสผ้าไหมไปงานแต่ง', 'เดรส', 4500, 'finished', 'ช่างสมศรี', 'CUST-001', now, '', 5, 900, '{"chest":"34","waist":"26","hips":"36","length":"40","shoulder":"15"}', 'https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03', ''],
+      
+      // 2. งานกำลังเย็บ มีรูปความคืบหน้า
+      ['J-002', 'RN-20240502-002', 'คุณมานะศักดิ์', '0844444444', '', 'สูทสากลสีเทาเข้ม Slim Fit', 'สูท', 8500, 'sewing', 'ช่างสมชาย', 'CUST-002', now, '', 0, 2400, '{"chest":"40","waist":"34","hips":"42","length":"29","shoulder":"18"}', 'https://images.unsplash.com/photo-1594932224444-116045763262', ''],
+      
+      // 3. งานใหม่ รอช่างกดรับ (Pending)
+      ['J-003', 'RN-20240503-003', 'คุณใจดี', '0855555555', '@jaidee', 'กางเกงสแล็คสีดำ 2 ตัว', 'กางเกง', 2400, 'pending', '', 'GUEST', now, '', 0, 0, '{"waist":"32","hips":"38","length":"38"}', '', ''],
+      
+      // 4. งานถูกปฏิเสธโดยช่าง (Rejected)
+      ['J-004', 'RN-20240504-004', 'คุณสมปอง', '0866666666', '', 'ชุดมาสคอตแฟนซี', 'อื่นๆ', 5000, 'rejected', 'ช่างสมชาย', 'GUEST', now, 'ไม่มีวัสดุผ้าขนสัตว์สีเขียวสะท้อนแสงในสต็อกและไม่รับงานโครงสร้างเหล็ก', 0, 0, '{}', '', ''],
+      
+      // 5. งานเสร็จแล้ว ชำระเงินเรียบร้อย (Paid)
+      ['J-005', 'RN-20240505-005', 'คุณจอย', '0877777777', '', 'กระโปรงทรงเอ ลายไทย', 'กระโปรง', 1200, 'paid', 'ช่างสมศรี', 'GUEST', now, '', 4, 350, '{"waist":"28","hips":"37","length":"22"}', '', ''],
+      
+      // 6. งานที่ลูกค้ายกเลิก (Cancelled)
+      ['J-006', 'RN-20240506-006', 'คุณแบงค์', '0888888888', '', 'สูททักซิโด้สีขาว', 'สูท', 9500, 'cancelled', '', 'GUEST', now, 'ลูกค้าย้ายไปจัดงานต่างประเทศด่วน ไม่ใช้ชุดแล้ว', 0, 0, '{}', '', ''],
+      
+      // 7. งานกำลังเย็บ (เพิ่งเริ่ม)
+      ['J-007', 'RN-20240507-007', 'คุณมณี', '0899999999', '', 'ชุดเดรสสั้นผ้าลูกไม้', 'เดรส', 3200, 'sewing', 'ช่างสมศรี', 'GUEST', now, '', 0, 800, '{"chest":"32","waist":"25","hips":"35"}', '', ''],
+      
+      // 8. งานที่มีข้อร้องเรียน/เคลม (Dispute)
+      ['J-008', 'RN-20240508-008', 'คุณพีระ', '0800000001', '', 'กางเกงยีนส์สั่งตัด', 'กางเกง', 1800, 'finished', 'ช่างสมชาย', 'GUEST', now, '', 2, 400, '{"waist":"34"}', '', 'สะโพกฟิตเกินไป ลุกนั่งลำบาก ขอขยายออก 1 นิ้ว'],
+      
+      // 9. งานที่บอสเพิ่มค่าใช้จ่ายเพิ่มเติม (Additional Cost)
+      ['J-009', 'RN-20240509-009', 'คุณฟ้า', '0800000002', '', 'ชุดราตรีปักมุก', 'เดรส', 12500, 'accepted', 'ช่างสมชาย', 'GUEST', now, '', 0, 4500, '{"chest":"35"}', '', ''],
+      
+      // 10. งานใหม่ เร่งด่วน
+      ['J-010', 'RN-20240510-010', 'คุณหนุ่ม', '0800000003', '', 'เสื้อเชิ้ตขาว 5 ตัว', 'อื่นๆ', 3500, 'pending', '', 'GUEST', now, '', 0, 0, '{"chest":"42","shoulder":"19"}', '', '']
+    ];
 
-  // ── 1. USERS (5 ชุด: 1 boss + 2 tailor + 2 customer) ───────────────
-  const uSheet = ss.getSheetByName("USERS");
-  const existingUsers = uSheet.getDataRange().getValues().slice(1).map(r => r[1]);
-  const sampleUsers = [
-    ["U-TAILOR-01", "somchai",   "pass1234", "tailor",   "สมชาย มีฝีมือ",       "0891234567"],
-    ["U-TAILOR-02", "niran",     "pass1234", "tailor",   "นิรันดร์ ช่างเย็บ",    "0892345678"],
-    ["U-CUST-01",   "aranya",    "pass1234", "customer", "อรัญญา สวยงาม",        "0812222111"],
-    ["U-CUST-02",   "wanchai",   "pass1234", "customer", "วันชัย ใส่สูท",         "0813333222"],
-    ["U-CUST-03",   "nattaya",   "pass1234", "customer", "ณัฏฐยา ชุดไทย",        "0814444333"],
-  ];
-  sampleUsers.forEach(u => {
-    if (!existingUsers.includes(u[1])) uSheet.appendRow(u);
-  });
-
-  // ── 2. STOCK (5 ชุด: หมวดหมู่หลากหลาย) ────────────────────────────
-  const sSheet = ss.getSheetByName("STOCK");
-  const existingStock = sSheet.getDataRange().getValues().slice(1).map(r => r[0]);
-  const now = new Date();
-  const sampleStock = [
-    ["STK-S01", "ผ้า",     "ผ้าวูลเนื้อดี",        80,  "เมตร",   650,  15, now],
-    ["STK-S02", "ผ้า",     "ผ้าไหมไทย",             30,  "เมตร",   1200, 5,  now],
-    ["STK-S03", "ด้าย",   "ด้ายสีดำ",              200, "ม้วน",   35,   20, now],
-    ["STK-S04", "กระดุม", "กระดุมสูทสีเงิน",       500, "เม็ด",   8,    50, now],
-    ["STK-S05", "ซิป",    "ซิปกระเป๋าสีทอง 20cm", 150, "เส้น",  25,   30, now],
-  ];
-  sampleStock.forEach(s => {
-    if (!existingStock.includes(s[0])) sSheet.appendRow(s);
-  });
-
-  // ── 3. JOBS (5 ชุด: สถานะและประเภทชุดที่หลากหลาย) ─────────────────
-  const jSheet = ss.getSheetByName("JOBS");
-  const existingJobs = jSheet.getDataRange().getValues().slice(1).map(r => r[0]);
-  const baseTime = new Date("2026-05-01T09:00:00");
-  const sampleJobs = [
-    // [id, rn, customer_name, phone, line, detail, category, budget, status, tailor_name, user_id, created_at, cancel_reason, rating, material_cost, measurements, progress_photo, dispute_notes]
-    [
-      "JOB-DEMO-001", "RN-1001-DEMO",
-      "อรัญญา สวยงาม", "0812222111", "@aranya_line",
-      "ตัดชุดเดรสผ้าไหมสีแดง สำหรับงานแต่งงาน ยาวคลุมเข่า ติดลูกไม้ที่ชายล่าง",
-      "เดรส", 4500, "finished", "somchai",
-      "U-CUST-01", new Date("2026-04-20T10:00:00"),
-      "", 5, 1200, "อก38 เอว30 ยาว46", "", ""
-    ],
-    [
-      "JOB-DEMO-002", "RN-1002-DEMO",
-      "วันชัย ใส่สูท", "0813333222", "@wanchai_biz",
-      "ตัดสูท 2 ชิ้น (เสื้อ+กางเกง) ผ้าวูล สีกรมท่า ทรงสลิม พร้อมกระเป๋า 4 ใบ",
-      "สูท", 8500, "sewing", "niran",
-      "U-CUST-02", new Date("2026-05-03T11:30:00"),
-      "", 0, 1950, "อก42 เอว34 ยาว31", "", ""
-    ],
-    [
-      "JOB-DEMO-003", "RN-1003-DEMO",
-      "ณัฏฐยา ชุดไทย", "0814444333", "@nattaya_th",
-      "ตัดชุดผ้าไทยแบบจิตรลดา สีเขียวมรกต พร้อมสไบ 2 ชุด สำหรับงานราชการ",
-      "อื่นๆ", 6200, "accepted", "somchai",
-      "U-CUST-03", new Date("2026-05-07T09:00:00"),
-      "", 0, 2400, "อก36 เอว28 ยาว44", "", ""
-    ],
-    [
-      "JOB-DEMO-004", "RN-1004-DEMO",
-      "วันชัย ใส่สูท", "0813333222", "@wanchai_biz",
-      "ตัดกางเกงสแล็คขายาว ผ้า Chino สีกากี 2 ตัว ทรงตรง",
-      "กางเกง", 1800, "pending", "",
-      "U-CUST-02", new Date("2026-05-10T14:00:00"),
-      "", 0, 0, "เอว34 สะโพก40 ยาว31", "", ""
-    ],
-    [
-      "JOB-DEMO-005", "RN-1005-DEMO",
-      "อรัญญา สวยงาม", "0812222111", "@aranya_line",
-      "ตัดกระโปรงบานครึ่งวงกลม ผ้าชีฟองสีฟ้า ยาวคลุมเข่า ติดซิปซ่อนข้างหลัง",
-      "กระโปรง", 1500, "rejected", "",
-      "U-CUST-01", new Date("2026-05-09T16:00:00"),
-      "วัสดุที่ลูกค้าระบุไม่มีในสต๊อก กรุณาติดต่อใหม่ภายใน 7 วัน", 0, 0, "เอว28 สะโพก38 ยาว22", "", ""
-    ],
-  ];
-  sampleJobs.forEach(j => {
-    if (!existingJobs.includes(j[0])) jSheet.appendRow(j);
-  });
-
-  Logger.log("✅ seedSampleData สำเร็จ: เพิ่มข้อมูลตัวอย่างแล้ว");
-  SpreadsheetApp.getUi().alert("seedSampleData เสร็จสิ้น!\nเพิ่มข้อมูลตัวอย่างแล้ว\nโปรดรีเฟรชแอปเพื่อดูผล");
+    jobs.forEach(row => jobSheet.appendRow(row));
+    
+    // เพิ่มประวัติการเข้างาน (Attendance)
+    const attSheet = ss.getSheetByName(SHEETS.ATTENDANCE);
+    if (attSheet && attSheet.getLastRow() === 1) {
+      attSheet.appendRow(['ATT-01', 'TAILOR-001', 'ช่างสมชาย', 'in', now, 'เข้างานตรงเวลา']);
+      attSheet.appendRow(['ATT-02', 'TAILOR-002', 'ช่างสมศรี', 'in', now, '']);
+    }
+  }
+  
+  Browser.msgBox("Seed Data เรียบร้อยแล้ว!");
 }

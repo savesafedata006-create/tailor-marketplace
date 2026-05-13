@@ -6,6 +6,8 @@
   <title>Tailor Management System</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
   <!-- ใช้ defer เพื่อไม่ให้ขัดขวางการโหลดหน้าบนมือถือ -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
   <link rel="stylesheet" href="style.css">
@@ -24,9 +26,17 @@
           <input type="checkbox" id="boss-remember"> จดจำฉันในระบบ
         </label>
         <button class="btn-primary" onclick="loginBoss()">เข้าสู่ระบบ</button>
-        <a href="#" onclick="fillDemoLogin('tailor')" class="btn-demo">
-          <i class="fas fa-vial"></i> เข้าใช้งานระบบ Demo (Admin)
-        </a>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
+          <a href="#" onclick="fillDemoLogin('boss_demo')" class="btn-demo" style="flex:1; min-width:100px; margin-top:0;">
+            <i class="fas fa-user-shield"></i> Demo Boss
+          </a>
+          <a href="#" onclick="fillDemoLogin('tailor_demo')" class="btn-demo" style="flex:1; min-width:100px; margin-top:0;">
+            <i class="fas fa-cut"></i> Demo ช่าง
+          </a>
+          <a href="#" onclick="fillDemoLogin('customer_demo')" class="btn-demo" style="flex:1; min-width:100px; margin-top:0;">
+            <i class="fas fa-user"></i> Demo ลูกค้า
+          </a>
+        </div>
         <p style="margin-top: 15px; font-size: 13px;"><a href="#" onclick="toggleTailorForgot(true)">ลืมรหัสผ่าน?</a></p>
       </div>
       <div id="tailor-forgot-fields" style="display:none;">
@@ -39,11 +49,11 @@
     </div>
   </div>
 
-  <div class="container" id="main-content" style="display: none;">
+  <div class="container hidden" id="main-content">
     <header>
       <div class="brand">
         <i class="fas fa-cut"></i>
-        <h1>Tailor <span>Admin</span></h1>
+        <h1>TailorHub <span>Backoffice</span></h1>
       </div>
       <nav class="main-nav">
         <a href="index.html">หน้าลูกค้า</a>
@@ -62,13 +72,22 @@
       </button>
     </header>
 
-    <section id="tailor-view" class="view" style="display: none;">
+    <section id="tailor-view" class="view hidden">
       <!-- Boss Navigation Hub -->
       <div class="boss-only boss-nav-hub">
-        <a href="index.html" class="hub-link"><i class="fas fa-external-link-alt"></i> ไปหน้าสั่งงานลูกค้า</a>
-        <a href="present.html" class="hub-link" style="margin-left:10px;"><i class="fas fa-book"></i> SOP / WI</a>
-        <div class="hub-divider"></div>
-        <span class="hub-label"><i class="fas fa-user-shield"></i> สิทธิ์ผู้ดูแลระบบสูงสุด</span>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="hub-label"><i class="fas fa-user-shield"></i> แผงควบคุมเจ้าของร้าน (Boss Dashboard)</span>
+          <button class="btn-pill" onclick="loadJobs('pending', true)"><i class="fas fa-sync"></i> อัปเดตข้อมูล</button>
+        </div>
+      </div>
+
+      <!-- Tailor Hero Summary (แสดงเฉพาะช่าง) -->
+      <div class="tailor-only performance-section" id="tailor-hero" style="background: linear-gradient(135deg, #4361ee, #4cc9f0); color: white; border: none;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 style="color:white; margin:0;"><i class="fas fa-user-circle"></i> สวัสดี, <span id="tailor-name-display">ช่างเย็บผ้า</span></h2>
+          <div style="text-align:right;"><small>รายได้ที่เบิกได้:</small><div id="my-available-top" style="font-size:20px; font-weight:700;">฿0</div></div>
+        </div>
+        <p style="margin-top: 10px; font-size: 12px; opacity: 0.9;"><i class="fas fa-mobile-alt"></i> สำหรับช่าง: <a href="tailor-portal.html" style="color: white; text-decoration: underline;">สลับไปใช้หน้าจอสำหรับมือถือ (Tailor Portal)</a></p>
       </div>
 
       <div class="section-header boss-only" id="boss-header-today">
@@ -120,22 +139,59 @@
         <div id="tailor-performance"></div>
       </div>
 
+      <!-- Boss Quick Access Links -->
+      <div class="boss-only performance-section" style="background: var(--bg); display: flex; gap: 10px; padding: 15px;">
+        <a href="stock.html" class="btn-pill" style="text-decoration: none;"><i class="fas fa-warehouse"></i> ไปหน้าจัดการคลังสินค้าแบบละเอียด</a>
+        <button class="btn-pill" onclick="switchTab('users')"><i class="fas fa-users-cog"></i> จัดการสิทธิ์พนักงาน</button>
+        <button class="btn-pill" onclick="exportJobsToPdf()"><i class="fas fa-file-pdf"></i> Export งานเป็น PDF</button>
+        <button class="btn-pill" onclick="switchTab('payroll')"><i class="fas fa-money-check-alt"></i> อนุมัติเงินเดือน</button>
+        <button class="btn-pill" onclick="switchTab('pl-report')"><i class="fas fa-chart-line"></i> รายงานกำไร-ขาดทุน</button>
+        <button class="btn-pill" onclick="switchTab('attendance')"><i class="fas fa-user-clock"></i> ตรวจเวลาเข้างาน</button>
+        <button class="btn-pill" onclick="switchTab('logs')"><i class="fas fa-history"></i> Log ระบบ</button>
+      </div>
+
       <!-- Monthly P&L Report Section (Initial State should be hidden) -->
       <div class="boss-only performance-section" id="pl-report-section" style="display: none;">
         <h3><i class="fas fa-file-invoice-dollar"></i> รายงานกำไร-ขาดทุนรายเดือน (P&L)</h3>
-        <p class="loader">กำลังประมวลผลรายงาน...</p>
+        <div id="pl-report-content">
+          <p class="loader">กำลังประมวลผลรายงาน...</p>
+        </div>
       </div>
 
       <!-- Rejected Jobs Analysis Section -->
       <div class="boss-only performance-section" id="rejected-analysis-section" style="display: none;">
-        <h3><i class="fas fa-exclamation-circle"></i> วิเคราะห์สาเหตุการปฏิเสธงาน</h3>
+        <h3><i class="fas fa-search-minus"></i> วิเคราะห์สาเหตุการปฏิเสธและข้อร้องเรียน</h3>
         <div id="rejected-list" class="table-container"></div>
       </div>
 
+      <!-- Attendance Tracking Section -->
+      <div class="boss-only performance-section" id="attendance-section" style="display: none;">
+        <h3><i class="fas fa-user-clock"></i> รายงานการเข้างานและลางาน</h3>
+        <div id="attendance-list" class="table-container">
+          <p class="loader">กำลังโหลดข้อมูลเวลา...</p>
+        </div>
+      </div>
+
+      <!-- Activity Logs Section -->
+      <div class="boss-only performance-section" id="logs-section" style="display: none;">
+        <h3><i class="fas fa-history"></i> บันทึกกิจกรรมระบบ (50 รายการล่าสุด)</h3>
+        <div id="logs-list-container" class="table-container">
+          <p class="loader">กำลังโหลด Log...</p>
+        </div>
+      </div>
+
       <!-- Stock Value Chart Section -->
-      <div class="boss-only performance-section chart-section" style="display: none;">
-        <h3><i class="fas fa-chart-bar"></i> มูลค่าสต๊อกแยกตามหมวดหมู่</h3>
-        <div style="height: 300px;"><canvas id="stockChart"></canvas></div>
+      <div class="boss-only performance-section" id="charts-container" style="display: none;">
+        <div class="dashboard-grid">
+          <div class="chart-card">
+             <h4><i class="fas fa-chart-bar"></i> มูลค่าสต๊อก</h4>
+             <div style="height: 250px;"><canvas id="stockChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+             <h4><i class="fas fa-chart-pie"></i> ประเภทงานจ้าง</h4>
+             <div style="height: 250px;"><canvas id="categoryChart"></canvas></div>
+          </div>
+        </div>
       </div>
 
       <!-- Revenue Comparison Chart Section -->
@@ -194,6 +250,12 @@
           </div>
         </div>
 
+        <!-- ส่วนแสดงกราฟผลงานรายเดือน -->
+        <div style="margin-top: 20px; padding: 15px; background: var(--card); border-radius: 15px; box-shadow: var(--shadow);">
+          <h4 style="margin-bottom: 15px; font-size: 15px;"><i class="fas fa-chart-bar"></i> ผลงานการเย็บรายเดือน (จำนวนงาน)</h4>
+          <div style="height: 250px;"><canvas id="tailorMonthlyChart"></canvas></div>
+        </div>
+
         <!-- ประวัติงานที่ทำเสร็จ (WI-T05/T06) -->
         <div style="margin-top: 20px;">
           <h4 style="margin-bottom: 10px; font-size: 15px;"><i class="fas fa-list-check"></i> ประวัติงานที่ทำเสร็จ</h4>
@@ -230,14 +292,14 @@
       
       <div class="tabs">
         <button onclick="switchTab('pending')" class="tab-btn active" id="tab-pending">
-          <i class="fas fa-inbox"></i> งานใหม่
+          <i class="fas fa-store"></i> งานใหม่ (รอรับ)
           <span id="pending-badge" class="badge-notify" style="display: none;">0</span>
         </button>
         <button onclick="switchTab('active')" class="tab-btn" id="tab-active">
-          <i class="fas fa-spinner"></i> กำลังเย็บ
+          <i class="fas fa-tasks"></i> งานของฉัน (กำลังทำ)
         </button>
         <button onclick="switchTab('my-stats')" class="tab-btn" id="tab-my-stats">
-          <i class="fas fa-user-circle"></i> รายได้ของฉัน
+          <i class="fas fa-wallet"></i> รายได้ & การเบิกเงิน
         </button>
         <button onclick="switchTab('stock')" class="tab-btn boss-only" id="tab-stock" style="display: none;">
           <i class="fas fa-warehouse"></i> สต๊อก
@@ -254,6 +316,12 @@
         <button onclick="switchTab('analysis')" class="tab-btn boss-only" id="tab-analysis" style="display: none;">
           <i class="fas fa-search-minus"></i> วิเคราะห์ปัญหา
         </button>
+        <button onclick="switchTab('attendance')" class="tab-btn boss-only" id="tab-attendance" style="display: none;">
+          <i class="fas fa-user-clock"></i> เข้างาน
+        </button>
+        <button onclick="switchTab('logs')" class="tab-btn boss-only" id="tab-logs" style="display: none;">
+          <i class="fas fa-history"></i> Log
+        </button>
       </div>
 
       <div id="job-list" class="job-grid">
@@ -261,15 +329,26 @@
       </div>
 
       <!-- Simple Upload UI for Tailors -->
-      <div id="upload-box" class="form-group" style="margin-top:20px; padding:12px; border:1px dashed #ddd; border-radius:8px; background:#fafafa;">
-        <h4 style="margin:0 0 8px 0;"><i class="fas fa-upload"></i> อัพโหลดรูปงาน (Tailor)</h4>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <input type="text" id="upload-job-id" placeholder="RN-2026xxxx-0001" style="padding:8px; border-radius:8px; border:1px solid #ddd; min-width:180px;">
-          <input type="file" id="upload-file" accept="image/*" style="padding:6px;">
-          <button class="btn-primary" id="upload-file-btn" onclick="uploadJobImage()">อัพโหลดรูป</button>
+      <div id="upload-modal" class="modal" style="display:none;">
+        <div class="receipt-content" style="max-width:450px;">
+          <button class="mclose" onclick="closeUploadModal()"><i class="fas fa-times"></i></button>
+          <div class="section-header">
+            <h2><i class="fas fa-upload"></i> อัปโหลดรูปความคืบหน้างาน</h2>
+          </div>
+          <div class="form-group">
+            <label>เลขที่ใบงาน (RN)</label>
+            <input type="text" id="upload-job-id" placeholder="RN-2026xxxx-0001" readonly>
+            <label>เลือกไฟล์รูปภาพ</label>
+            <input type="file" id="upload-file" accept="image/*">
+            <button class="btn-primary" id="upload-file-btn" onclick="uploadJobImage()">อัปโหลด</button>
+            <p id="upload-status" style="margin-top:8px; font-size:13px; color:var(--text-sub);"></p>
+            <small style="display:block; margin-top:6px; color:var(--text-sub);">รูปภาพจะถูกแปลงเป็น DataURL และบันทึกลงในระบบ</small>
+          </div>
         </div>
-        <p id="upload-status" style="margin-top:8px; font-size:13px; color:var(--text-sub);"></p>
-        <small style="display:block; margin-top:6px; color:var(--text-sub);">เคล็ดลับ: ใส่ Job ID เพื่อผูกรูปกับงานที่ต้องการ (RN-...)</small>
+      </div>
+
+      <!-- Hidden div for PDF export content -->
+      <div id="pdf-export-content" style="display: none; width: 210mm; padding: 10mm;">
       </div>
 
       <!-- Pagination Controls -->

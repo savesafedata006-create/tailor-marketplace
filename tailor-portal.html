@@ -18,11 +18,21 @@
     .job-actions { display:flex; gap:8px; margin-top:8px; }
     .btn { padding:8px 10px; border-radius:8px; border:0; cursor:pointer; font-weight:600; }
     .btn-primary { background:linear-gradient(135deg,#16a34a,#059669); color:#fff; }
+    .btn-warning { background:#f59e0b; color:#fff; }
     .btn-secondary { background:#f3f4f6; color:#111; }
     .small { font-size:13px; color:var(--text-sub);} 
     .upload-row { display:flex; gap:8px; align-items:center; margin-top:8px; }
     input[type=file] { font-size:13px; }
     .hidden { display:none; }
+    .measurement-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; background: #f9fafb; padding: 8px; border-radius: 6px; margin: 8px 0; border: 1px solid #edf2f7; }
+    .m-item { text-align: center; }
+    .m-item div:first-child { font-size: 10px; color: #718096; text-transform: uppercase; }
+    .m-item div:last-child { font-weight: 600; font-size: 13px; }
+    .dispute-box { background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; padding: 8px; border-radius: 6px; font-size: 12px; margin: 8px 0; }
+    .status-bar { display: flex; gap: 10px; padding: 12px; background: #f8fafc; border-bottom: 1px solid #edf2f7; }
+    .btn-clock { flex: 1; padding: 10px; border-radius: 12px; font-size: 14px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 500; }
+    .btn-clock.active-in { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+    .btn-clock.active-out { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
   </style>
 </head>
 <body>
@@ -47,11 +57,17 @@
   </div>
 
   <div id="tp-main" class="hidden">
+    <div class="status-bar">
+      <button class="btn-clock" id="btn-clock-in"><i class="fas fa-sign-in-alt"></i> แจ้งเข้างาน</button>
+      <button class="btn-clock" id="btn-clock-out"><i class="fas fa-sign-out-alt"></i> แจ้งออกงาน</button>
+      <button class="btn-clock" id="btn-leave-req"><i class="fas fa-calendar-times"></i> แจ้งหยุดงาน</button>
+    </div>
+
     <div class="tp-summary">
       <div class="tp-card"><div style="font-size:12px;color:var(--text-sub)">Assigned</div><div id="tp-assigned" style="font-weight:700">0</div></div>
       <div class="tp-card"><div style="font-size:12px;color:var(--text-sub)">In progress</div><div id="tp-active" style="font-weight:700">0</div></div>
       <div class="tp-card"><div style="font-size:12px;color:var(--text-sub)">Finished</div><div id="tp-finished" style="font-weight:700">0</div></div>
-      <div class="tp-card"><div style="font-size:12px;color:var(--text-sub)">รายได้ที่เบิกได้</div><div id="tp-income" style="font-weight:700">฿0</div></div>
+      <div class="tp-card" id="tp-income-card" style="cursor:pointer; border:1px solid #e2e8f0;"><div style="font-size:12px;color:var(--text-sub)">รายได้ที่เบิกได้ <i class="fas fa-hand-holding-usd"></i></div><div id="tp-income" style="font-weight:700; color:var(--primary);">฿0</div></div>
     </div>
 
     <div style="padding:12px; display:flex; gap:8px; align-items:center;">
@@ -63,12 +79,66 @@
       <input id="tp-search" placeholder="ค้นหา RN หรือ ลูกค้า" style="padding:8px;border-radius:8px;border:1px solid #eee;min-width:140px;" />
     </div>
 
-    <div class="job-list" id="tp-job-list">
+    <div class="job-list" id="tp-job-list" style="margin-bottom: 80px;">
       <!-- Job cards will be injected here -->
     </div>
     <div id="tp-history" class="hidden" style="padding:12px;">
       <h4>ประวัติการทำงาน</h4>
       <div id="tp-history-list" class="job-list"></div>
+    </div>
+  </div>
+
+  <!-- Stock Selection Modal Overlay (Simple inline for portal) -->
+  <div id="stock-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#fff; padding:20px; border-radius:15px; width:100%; max-width:400px;">
+      <h4><i class="fas fa-warehouse"></i> เลือกวัสดุเพื่อเริ่มงาน</h4>
+      <p class="small">ระบบจะหักสต็อกและบันทึกต้นทุนให้ร้านอัตโนมัติ</p>
+      <div style="margin-top:15px;">
+        <select id="stock-select" style="width:100%; padding:10px; border-radius:8px; margin-bottom:10px;"></select>
+        <input type="number" id="stock-qty" placeholder="จำนวนที่ใช้" style="width:100%; padding:10px; border-radius:8px; margin-bottom:15px;" value="1">
+      </div>
+      <input type="hidden" id="current-stock-job-id">
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('stock-overlay').classList.add('hidden')">ข้าม</button>
+        <button class="btn btn-primary" style="flex:1" id="confirm-stock-btn">ยืนยันเริ่มงาน</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Withdrawal Modal -->
+  <div id="withdraw-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#fff; padding:20px; border-radius:15px; width:100%; max-width:400px;">
+      <h4><i class="fas fa-hand-holding-usd"></i> ยื่นขอเบิกเงิน</h4>
+      <p class="small">ยอดที่เบิกได้สูงสุด: <strong id="withdraw-max-label" style="color:var(--primary)">฿0</strong></p>
+      <div style="margin-top:15px;">
+        <label class="small">จำนวนเงินที่ต้องการเบิก (บาท)</label>
+        <input type="number" id="withdraw-amount" placeholder="ระบุจำนวนเงิน" style="width:100%; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #ddd;">
+        <label class="small">รอบการเบิกเงิน</label>
+        <select id="withdraw-cycle" style="width:100%; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #ddd;">
+          <option value="15">รอบวันที่ 15</option>
+          <option value="30">รอบวันที่ 30</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('withdraw-overlay').classList.add('hidden')">ยกเลิก</button>
+        <button class="btn btn-primary" style="flex:1" id="confirm-withdraw-btn">ยืนยันการเบิก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leave Request Modal -->
+  <div id="leave-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#fff; padding:20px; border-radius:15px; width:100%; max-width:400px;">
+      <h4><i class="fas fa-calendar-day"></i> แจ้งหยุดงาน / ลางาน</h4>
+      <div style="margin-top:15px;">
+        <label class="small">วันที่เริ่มหยุด</label>
+        <input type="date" id="leave-date" style="width:100%; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #ddd;">
+        <textarea id="leave-reason" placeholder="ระบุเหตุผลการลา" style="width:100%; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #ddd;" rows="3"></textarea>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('leave-overlay').classList.add('hidden')">ยกเลิก</button>
+        <button class="btn btn-primary" style="flex:1" id="confirm-leave-btn">ส่งคำขอ</button>
+      </div>
     </div>
   </div>
 
@@ -85,12 +155,29 @@
           <div style="margin-top:6px;" class="small created"></div>
         </div>
       </div>
+      
+      <div class="dispute-box hidden"><i class="fas fa-exclamation-circle"></i> <strong>ลูกค้าแจ้งแก้ไข:</strong> <span class="dispute-text"></span></div>
+
+      <div class="measurement-grid">
+        <div class="m-item"><div>อก</div><div class="m-chest">-</div></div>
+        <div class="m-item"><div>เอว</div><div class="m-waist">-</div></div>
+        <div class="m-item"><div>สะโพก</div><div class="m-hips">-</div></div>
+        <div class="m-item"><div>ยาว</div><div class="m-length">-</div></div>
+        <div class="m-item"><div>ไหล่</div><div class="m-shoulder">-</div></div>
+      </div>
+
+      <div class="photo-preview hidden" style="margin-top:10px;"></div>
+      
       <div class="job-actions">
-        <button class="btn btn-primary btn-start">เริ่มเย็บ</button>
+        <button class="btn btn-warning btn-accept">รับงาน</button>
+        <button class="btn btn-primary btn-start">เริ่มขั้นตอนตัดเย็บ</button>
         <button class="btn btn-secondary btn-upload">อัพโหลดรูป</button>
         <button class="btn btn-secondary btn-finish">แจ้งเสร็จ</button>
       </div>
       <div class="upload-row hidden">
+        <div class="upload-preview-container hidden" style="margin: 10px 0;">
+          <img class="upload-img-preview" style="width:100%; border-radius:8px; max-height:200px; object-fit:contain; border: 1px solid #ddd; background: #f9f9f9;">
+        </div>
         <input type="file" accept="image/*" class="tp-file" />
         <button class="btn btn-primary btn-do-upload">ส่งรูป</button>
         <div class="small upload-status"></div>
@@ -107,6 +194,8 @@
       const demoBtn = document.getElementById('tp-demo-btn');
       const loginBtn = document.getElementById('tp-login-btn');
       const logoutBtn = document.getElementById('tp-logout');
+      let availableIncome = 0;
+      let currentStockList = [];
 
       function showMainForTailor(id, name) {
         sessionStorage.setItem('userRole','tailor');
@@ -123,7 +212,96 @@
         const u = document.getElementById('tp-username').value || 'tailor-x';
         showMainForTailor('TAILOR-'+u.toUpperCase(), u);
       });
-      logoutBtn.addEventListener('click', () => { sessionStorage.clear(); localStorage.clear(); location.reload(); });
+      logoutBtn.addEventListener('click', () => {
+        if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?")) return;
+        sessionStorage.clear();
+        localStorage.clear();
+        location.href = 'index.html';
+      });
+
+      // ระบบเข้า-ออกงาน
+      async function handleClock(type) {
+        const name = sessionStorage.getItem('userName');
+        const id = sessionStorage.getItem('userId');
+        if(!confirm(`ยืนยันการแจ้ง${type === 'in' ? 'เข้างาน' : 'ออกงาน'}?`)) return;
+        
+        try {
+          const res = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'clock_work', type: type, user_id: id, username: name })
+          });
+          const data = await res.json();
+          if(data.status === 'success') {
+            alert(`บันทึกเวลา${type === 'in' ? 'เข้างาน' : 'ออกงาน'}สำเร็จ`);
+            document.getElementById(`btn-clock-${type}`).classList.add(type === 'in' ? 'active-in' : 'active-out');
+          }
+        } catch(e) { alert('เกิดข้อผิดพลาด'); }
+      }
+
+      document.getElementById('btn-clock-in').onclick = () => handleClock('in');
+      document.getElementById('btn-clock-out').onclick = () => handleClock('out');
+      document.getElementById('btn-leave-req').onclick = () => document.getElementById('leave-overlay').classList.remove('hidden');
+
+      // ระบบเบิกเงิน
+      document.getElementById('tp-income-card').onclick = () => {
+        if (availableIncome <= 0) return alert('ไม่มียอดเงินที่สามารถเบิกได้');
+        document.getElementById('withdraw-max-label').innerText = '฿' + availableIncome.toLocaleString();
+        document.getElementById('withdraw-amount').value = availableIncome;
+        document.getElementById('withdraw-overlay').classList.remove('hidden');
+      };
+
+      document.getElementById('confirm-withdraw-btn').onclick = async () => {
+        const amount = Number(document.getElementById('withdraw-amount').value);
+        const cycle = document.getElementById('withdraw-cycle').value;
+
+        if (!amount || amount <= 0) return alert('กรุณาระบุจำนวนเงินที่ถูกต้อง');
+        if (amount > availableIncome) return alert('จำนวนเงินที่เบิกต้องไม่เกินยอดที่เบิกได้');
+
+        if (!confirm(`ยืนยันการยื่นขอเบิกเงินจำนวน ฿${amount.toLocaleString()}?`)) return;
+
+        try {
+          const res = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+              action: 'request_payment',
+              user_id: sessionStorage.getItem('userId'),
+              username: sessionStorage.getItem('userName'),
+              amount: amount,
+              cycle: cycle
+            })
+          });
+          const data = await res.json();
+          if (data.status === 'success') {
+            alert('ส่งคำขอเบิกเงินสำเร็จ! รอการอนุมัติจากเจ้าของร้าน');
+            document.getElementById('withdraw-overlay').classList.add('hidden');
+            loadTailorJobs();
+          }
+        } catch (e) { alert('เกิดข้อผิดพลาด'); }
+      };
+
+      document.getElementById('confirm-leave-btn').onclick = async () => {
+        const date = document.getElementById('leave-date').value;
+        const reason = document.getElementById('leave-reason').value;
+        if(!date || !reason) return alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+
+        try {
+          const res = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+              action: 'request_leave',
+              user_id: sessionStorage.getItem('userId'),
+              username: sessionStorage.getItem('userName'),
+              start_date: date,
+              reason: reason
+            })
+          });
+          const data = await res.json();
+          if(data.status === 'success') {
+            alert('ส่งคำแจ้งหยุดงานสำเร็จ');
+            document.getElementById('leave-overlay').classList.add('hidden');
+          }
+        } catch(e) { alert('เกิดข้อผิดพลาด'); }
+      };
 
       document.getElementById('tp-filter-assigned').addEventListener('click', () => loadTailorJobs('assigned'));
       document.getElementById('tp-filter-active').addEventListener('click', () => loadTailorJobs('sewing'));
@@ -147,19 +325,28 @@
         try {
           const res = await fetch(SCRIPT_URL);
           const data = await res.json();
+          currentStockList = data.stock || [];
           const jt = (data.jobs||[]);
           const myId = sessionStorage.getItem('userId');
-          // assigned to me OR unassigned and status pending
-          localJobs = jt.filter(j => (j.assigned_tailor && j.assigned_tailor === myId) || (filter === 'all') || (filter === 'assigned' && j.assigned_tailor === myId) || (filter === 'sewing' && j.status === 'sewing'));
+          const myName = sessionStorage.getItem('userName');
+
+          localJobs = jt.filter(j => (j.tailor_name === myName) || (j.status === 'pending' && filter === 'assigned') || (filter === 'all'));
 
           // update summary
-          document.getElementById('tp-assigned').innerText = jt.filter(j => j.assigned_tailor === myId).length;
-          document.getElementById('tp-active').innerText = jt.filter(j => j.assigned_tailor === myId && (j.status === 'sewing' || j.status === 'accepted')).length;
-          document.getElementById('tp-finished').innerText = jt.filter(j => j.assigned_tailor === myId && j.status === 'finished').length;
-          // compute income (simple sum of finished budgets * 0.4)
-          const myFinished = jt.filter(j => j.assigned_tailor === myId && j.status === 'finished');
-          const income = myFinished.reduce((s, x) => s + (Number(x.budget) || 0) * 0.4, 0);
-          document.getElementById('tp-income').innerText = '฿' + income.toLocaleString();
+          document.getElementById('tp-assigned').innerText = jt.filter(j => j.status === 'pending').length;
+          document.getElementById('tp-active').innerText = jt.filter(j => j.tailor_name === myName && (j.status === 'sewing' || j.status === 'accepted')).length;
+          document.getElementById('tp-finished').innerText = jt.filter(j => j.tailor_name === myName && j.status === 'finished').length;
+
+          // คำนวณรายได้สุทธิโดยหักลบยอดที่เคยเบิกไปแล้ว
+          const myFinished = jt.filter(j => j.tailor_name === myName && j.status === 'finished');
+          const totalWage = myFinished.reduce((s, x) => s + (Number(x.budget) || 0) * 0.4, 0);
+          
+          const myPayroll = (data.payroll || []).filter(p => p.user_id === myId);
+          const grossPaid = myPayroll.filter(p => p.status === 'approved').reduce((s, p) => s + (Number(p.gross_amount) || 0), 0);
+          const grossPending = myPayroll.filter(p => p.status === 'pending').reduce((s, p) => s + (Number(p.gross_amount) || 0), 0);
+          
+          availableIncome = Math.max(0, totalWage - grossPaid - grossPending);
+          document.getElementById('tp-income').innerText = '฿' + availableIncome.toLocaleString();
 
           list.innerHTML = '';
           localJobs.forEach(renderJobCard);
@@ -183,7 +370,7 @@
         container.innerHTML = '';
         items.slice().reverse().forEach(j => {
           const div = document.createElement('div');
-          div.className = 'job-card';
+          div.className = 'job-card'; div.style.marginBottom = '8px';
           div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><div><strong>${j.rn}</strong><div class="small">${j.job_detail}</div></div><div class="small">฿${Number(j.budget).toLocaleString()}</div></div>`;
           container.appendChild(div);
         });
@@ -200,18 +387,74 @@
         el.querySelector('.status').innerText = job.status || '';
         el.querySelector('.created').innerText = (job.created_at||'').split('T')[0];
 
+        // Dispute handling
+        if (job.dispute_notes) {
+          const dBox = el.querySelector('.dispute-box');
+          dBox.classList.remove('hidden');
+          el.querySelector('.dispute-text').innerText = job.dispute_notes;
+        }
+
+        // Measurements handling
+        try {
+          const m = JSON.parse(job.measurements || '{}');
+          el.querySelector('.m-chest').innerText = m.chest || '-';
+          el.querySelector('.m-waist').innerText = m.waist || '-';
+          el.querySelector('.m-hips').innerText = m.hips || '-';
+          el.querySelector('.m-length').innerText = m.length || '-';
+          el.querySelector('.m-shoulder').innerText = m.shoulder || '-';
+        } catch(e) {}
+
+        const photoPrev = el.querySelector('.photo-preview');
+        if (job.progress_photo) {
+          photoPrev.innerHTML = `<img src="${job.progress_photo}" style="width:100%; border-radius:8px; max-height:150px; object-fit:cover; cursor:pointer;" onclick="window.open('${job.progress_photo}','_blank')">`;
+          photoPrev.classList.remove('hidden');
+        }
+
+        const btnAccept = el.querySelector('.btn-accept');
         const btnStart = el.querySelector('.btn-start');
         const btnUpload = el.querySelector('.btn-upload');
         const btnFinish = el.querySelector('.btn-finish');
 
+        // Visibility logic based on status
+        if (job.status === 'pending') {
+          btnStart.classList.add('hidden'); btnUpload.classList.add('hidden'); btnFinish.classList.add('hidden');
+        } else if (job.status === 'accepted') {
+          btnAccept.classList.add('hidden'); btnFinish.classList.add('hidden');
+        } else if (job.status === 'sewing') {
+          btnAccept.classList.add('hidden'); btnStart.classList.add('hidden');
+        } else {
+          btnAccept.classList.add('hidden'); btnStart.classList.add('hidden'); btnUpload.classList.add('hidden'); btnFinish.classList.add('hidden');
+        }
+
+        btnAccept.addEventListener('click', () => {
+          // Show stock modal
+          const overlay = document.getElementById('stock-overlay');
+          const sel = document.getElementById('stock-select');
+          sel.innerHTML = '<option value="">ไม่ใช้สต็อกวัสดุ</option>' + 
+            currentStockList.map(s => `<option value="${s.item_id}">${s.item_name} (เหลือ ${s.quantity})</option>`).join('');
+          
+          document.getElementById('current-stock-job-id').value = job.rn || job.id;
+          overlay.classList.remove('hidden');
+        });
+
+        document.getElementById('confirm-stock-btn').onclick = async () => {
+          const jobId = document.getElementById('current-stock-job-id').value;
+          const stockId = document.getElementById('stock-select').value;
+          const stockQty = document.getElementById('stock-qty').value;
+          document.getElementById('stock-overlay').classList.add('hidden');
+          
+          await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'update_status', id: jobId, status: 'accepted', tailor_name: sessionStorage.getItem('userName'), stock_id: stockId, stock_qty: stockQty, actorId: sessionStorage.getItem('userId') }) });
+          loadTailorJobs();
+        };
+
         btnStart.addEventListener('click', async () => {
-          await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'update_status', jobId: job.jobId || job.rn || job.id || job.job_id, newStatus: 'sewing', actorId: sessionStorage.getItem('userId'), actorRole: 'tailor' }) });
+          await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'update_status', id: job.rn || job.id, status: 'sewing', actorId: sessionStorage.getItem('userId') }) });
           loadTailorJobs();
         });
 
         btnFinish.addEventListener('click', async () => {
           if (!confirm('ยืนยันว่างานเสร็จเรียบร้อยแล้ว?')) return;
-          await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'update_status', jobId: job.jobId || job.rn || job.id || job.job_id, newStatus: 'finished', actorId: sessionStorage.getItem('userId'), actorRole: 'tailor' }) });
+          await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'update_status', id: job.rn || job.id, status: 'finished', actorId: sessionStorage.getItem('userId') }) });
           loadTailorJobs();
         });
 
@@ -235,6 +478,8 @@
             const j = await res.json();
             if (j && j.status === 'ok' || j.status === 'success') {
               uploadStatus.innerText = 'อัพโหลดสำเร็จ';
+              previewContainer.classList.add('hidden');
+              fileInput.value = '';
               setTimeout(() => loadTailorJobs(), 800);
             } else {
               uploadStatus.innerText = 'อัพโหลดล้มเหลว';

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boss Dashboard — ระบบจัดการร้าน</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    :root { --sidebar-width: 240px; }
+    body { display: flex; background: var(--bg); margin: 0; }
+    .sidebar { width: var(--sidebar-width); background: var(--card); height: 100vh; position: fixed; border-right: 1px solid #eee; padding: 20px 0; z-index: 100; }
+    .sidebar-brand { padding: 0 25px 20px; border-bottom: 1px solid #eee; margin-bottom: 20px; }
+    .sidebar-menu { list-style: none; padding: 0; margin: 0; }
+    .sidebar-menu li { padding: 12px 25px; cursor: pointer; transition: 0.3s; color: var(--text-sub); display: flex; align-items: center; gap: 12px; }
+    .sidebar-menu li:hover, .sidebar-menu li.active { background: #f0f4ff; color: var(--primary); border-right: 4px solid var(--primary); }
+    .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 30px; min-height: 100vh; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .boss-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .section-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    @media (max-width: 768px) {
+      .sidebar { width: 60px; }
+      .sidebar span, .sidebar-brand h1 { display: none; }
+      .main-content { margin-left: 60px; }
+    }
+  </style>
+</head>
+<body class="boss-system">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1 style="font-size: 20px;"><i class="fas fa-user-shield"></i> <span>BossHub</span></h1>
+    </div>
+    <ul class="sidebar-menu">
+      <li class="active" onclick="switchBossTab('pending', 'ศูนย์ควบคุมการจัดการร้าน')"><i class="fas fa-tachometer-alt"></i> <span>ภาพรวม</span></li>
+      <li onclick="switchBossTab('active', 'ระบบงานช่าง (รายการงานที่กำลังทำ)')"><i class="fas fa-cut"></i> <span>ระบบงานช่าง</span></li>
+      <li onclick="location.href='present.html'"><i class="fas fa-book"></i> <span>วิธีใช้งาน (SOP/WI)</span></li>
+      <li onclick="switchBossTab('stock', 'จัดการคลังสินค้าและสต๊อก')"><i class="fas fa-warehouse"></i> <span>สต๊อกวัสดุ</span></li>
+      <li onclick="switchBossTab('payroll', 'จัดการคำขอเบิกเงินเดือนพนักงาน')"><i class="fas fa-money-check-alt"></i> <span>จ่ายเงินเดือน</span></li>
+      <li onclick="switchBossTab('pl-report', 'รายงานกำไร-ขาดทุน (P&L)')"><i class="fas fa-chart-line"></i> <span>กำไร-ขาดทุน</span></li>
+      <li onclick="switchBossTab('users', 'จัดการสิทธิ์และบัญชีพนักงาน')"><i class="fas fa-users-cog"></i> <span>จัดการพนักงาน</span></li>
+      <li onclick="switchBossTab('attendance', 'รายงานการเข้างานและลางาน')"><i class="fas fa-user-clock"></i> <span>เวลาเข้างาน</span></li>
+      <li onclick="switchBossTab('logs', 'บันทึกกิจกรรมย้อนหลังในระบบ')"><i class="fas fa-history"></i> <span>Log ระบบ</span></li>
+      <li onclick="logoutBoss()" style="margin-top: auto; color: var(--warning);"><i class="fas fa-sign-out-alt"></i> <span>ออกจากระบบ</span></li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="section-title" id="page-title">ศูนย์ควบคุมการจัดการร้าน</div>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn-pill" onclick="loadJobs('pending', true)"><i class="fas fa-sync"></i> รีเฟรชข้อมูล</button>
+        <button class="btn-pill" onclick="exportJobsToPdf()"><i class="fas fa-file-pdf"></i> Export PDF</button>
+        <button class="btn-pill" id="theme-toggle"><i class="fas fa-moon"></i></button>
+      </div>
+    </div>
+
+    <!-- Dashboard Summary Cards -->
+    <div class="boss-card-grid">
+      <div class="dash-card income">
+        <small>รายได้วันนี้</small>
+        <p id="today-income" style="font-size: 24px; font-weight: 700;">฿0</p>
+      </div>
+      <div class="dash-card">
+        <small>งานค้างส่ง</small>
+        <p id="count-pending" style="font-size: 24px; font-weight: 700;">0</p>
+      </div>
+      <div class="dash-card">
+        <small>พนักงานที่เข้างาน</small>
+        <p id="count-staff-today" style="font-size: 24px; font-weight: 700;">0</p>
+      </div>
+      <div class="dash-card" style="border-left: 5px solid var(--warning);">
+        <small>วัสดุที่ต้องซื้อด่วน</small>
+        <p id="s-low" style="font-size: 24px; font-weight: 700; color: var(--warning);">0</p>
+      </div>
+    </div>
+
+    <!-- Dynamic Content Sections (Will be filled by script.js) -->
+    
+    <!-- 1. รายงานกราฟ -->
+    <div class="performance-section" id="charts-container">
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+        <div class="chart-card">
+          <h4><i class="fas fa-chart-line"></i> แนวโน้มรายได้รายเดือน</h4>
+          <div style="height: 300px;"><canvas id="revenueChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h4><i class="fas fa-chart-pie"></i> ประเภทชุดยอดฮิต</h4>
+          <div style="height: 300px;"><canvas id="categoryChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. ตารางผลงานช่าง (40/60) -->
+    <div class="performance-section" id="performance-summary">
+      <h3><i class="fas fa-hand-holding-usd"></i> ระบบแจกแจงค่าแรง (ช่าง 40% / ร้าน 60%)</h3>
+      <div id="tailor-performance"></div>
+    </div>
+
+    <!-- 3. ค้นหาและรายการงาน -->
+    <div class="search-container" id="boss-search-row">
+      <i class="fas fa-search"></i>
+      <input type="text" id="search-input" placeholder="ค้นหาใบงานหรือชื่อลูกค้า..." oninput="debouncedFilterJobs()">
+    </div>
+
+    <div id="job-list" class="job-grid">
+      <div class="loader">กำลังรวบรวมข้อมูล...</div>
+    </div>
+
+    <!-- 4. ส่วนสต็อกวัสดุ -->
+    <div class="performance-section" id="stock-mgmt-view" style="display:none;">
+      <div id="stock-list"></div>
+    </div>
+
+    <!-- 5. ส่วนจัดการสิทธิ์พนักงาน -->
+    <div class="performance-section" id="user-management-section" style="display:none;">
+      <div id="user-list"></div>
+    </div>
+
+    <!-- 6. รายงาน P&L -->
+    <div class="performance-section" id="pl-report-section" style="display:none;">
+      <div id="pl-report-content"></div>
+    </div>
+
+    <!-- 7. อนุมัติเงินเดือน -->
+    <div class="performance-section" id="payroll-management-section" style="display:none;">
+      <div id="admin-payroll-list"></div>
+    </div>
+
+    <!-- 8. เวลาเข้างาน -->
+    <div class="performance-section" id="attendance-section" style="display:none;">
+      <div id="attendance-list"></div>
+    </div>
+
+    <!-- 9. Log ระบบ -->
+    <div class="performance-section" id="logs-section" style="display:none;">
+      <div id="logs-list-container"></div>
+    </div>
+
+    <div id="pagination-controls" class="pagination-container"></div>
+    <div id="pdf-export-content" style="display: none; width: 210mm;"></div>
+  </main>
+
+  <!-- Modal อื่นๆ (ใช้ร่วมกับ script.js) -->
+  <div id="change-password-modal" class="modal" style="display:none;">
+    <div class="receipt-content">
+      <h2><i class="fas fa-key"></i> เปลี่ยนรหัสผ่าน</h2>
+      <div class="form-group">
+        <input type="password" id="cp-old-pass" placeholder="รหัสผ่านเดิม">
+        <input type="password" id="cp-new-pass" placeholder="รหัสผ่านใหม่">
+        <button class="btn-primary" onclick="handleChangePassword()">ยืนยัน</button>
+        <button class="btn-secondary" onclick="closeChangePasswordModal()">ยกเลิก</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // ตรวจสอบว่าเป็นบอสจริงไหม
+      const role = sessionStorage.getItem('userRole') || localStorage.getItem('userRole');
+      if (role !== 'boss') {
+        alert('พื้นที่นี้สำหรับเจ้าของร้านเท่านั้น');
+        location.href = 'tailor.html';
+        return;
+      }
+      
+      if (typeof initTheme === 'function') initTheme();
+      loadJobs('pending'); // โหลดข้อมูลตั้งต้น
+    });
+
+    // ฟังก์ชันพิเศษสำหรับ Sidebar ในหน้า Boss
+    function switchBossTab(tabName, label) {
+      document.getElementById('page-title').innerText = label;
+      document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+      switchTab(tabName);
+    }
+  </script>
+</body>
+</html>

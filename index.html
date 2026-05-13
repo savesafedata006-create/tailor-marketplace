@@ -30,9 +30,9 @@
       </div>
       <nav class="main-nav">
         <a href="index.html" class="active">หน้าแรก</a>
-        <span class="nav-text disabled">วิธีใช้งาน</span>
         <a href="portfolio.html">ผลงาน</a>
         <a href="contact.html">ติดต่อเรา</a>
+        <a href="tailor.html" class="staff-link"><i class="fas fa-tools"></i> ระบบจัดการ</a>
       </nav>
       <div class="header-actions">
         <div id="user-profile-header" class="hidden">
@@ -40,8 +40,8 @@
           <button class="btn-icon" onclick="openChangePasswordModal()" title="เปลี่ยนรหัสผ่าน"><i class="fas fa-key"></i></button>
           <button class="btn-icon btn-danger" onclick="logoutCustomer()" title="ออกจากระบบ"><i class="fas fa-sign-out-alt"></i></button>
         </div>
-        <div id="boss-return-link" class="boss-only hidden">
-          <a href="tailor.html" class="btn-pill"><i class="fas fa-user-shield"></i> จัดการร้าน</a>
+        <div id="boss-return-link" class="staff-only hidden">
+          <a href="tailor.html" class="btn-pill"><i class="fas fa-user-shield"></i> ระบบจัดการ</a>
         </div>
         <div class="portal-access-container" id="portal-access-container">
           <button class="portal-access-btn" title="System Access">
@@ -51,14 +51,12 @@
             <a href="tailor.html" class="dropdown-item"><i class="fas fa-lock"></i> Admin Login</a>
           </div>
         </div>
-        <!-- Demo role quick-switch (visible in demo build) -->
-        <div id="demo-role-buttons" style="display:flex; gap:8px; margin-left:12px; align-items:center;">
-          <button class="btn-secondary" onclick="becomeDemoCustomer()" title="เข้าสู่ระบบ (Demo Customer)" style="padding:6px 8px;">ลูกค้า</button>
-          <button class="btn-secondary" onclick="becomeDemoTailor()" title="เข้าสู่ระบบ (Demo Tailor)" style="padding:6px 8px;">ช่าง</button>
-          <button class="btn-secondary" onclick="becomeDemoBoss()" title="เข้าสู่ระบบ (Demo Boss)" style="padding:6px 8px;">บอส</button>
-        </div>
       </div>
     </header>
+
+    <!-- Boss Pending Alert Banner (จะแสดงเมื่อมีคำขอเบิกเงินค้าง) -->
+    <div id="boss-pending-alert" class="hidden" style="background: #fee2e2; color: #b91c1c; padding: 15px 20px; border-radius: 20px; margin-bottom: 25px; font-size: 14px; border: 1px solid #fca5a5; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
+    </div>
 
     <!-- How it works Section -->
     <section class="how-it-works reveal">
@@ -85,14 +83,110 @@
       </div>
     </section>
 
-    <!-- Auth Section (disabled) -->
-    <section id="auth-view" class="view reveal" style="display:none;">
+    <!-- Tutorial & Guidance Section -->
+    <section class="tutorial-section reveal" style="margin-top: 30px; padding: 30px 20px; background: var(--card); border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.02); text-align: center;">
       <div class="section-header">
-        <h2><i class="fas fa-user-circle"></i> ระบบล็อคอินถูกปิดชั่วคราว</h2>
-        <p>ฟีเจอร์ล็อคอินถูกปิดสำหรับตอนนี้ ระบบจะทำงานในโหมด Guest เพื่อให้ทดลองใช้งานได้</p>
+        <h2><i class="fas fa-lightbulb"></i> คำแนะนำการใช้งาน <span>(User Guide)</span></h2>
+        <p>วิธีการค้นหาและกรองข้อมูลงานจ้างอย่างมีประสิทธิภาพ</p>
       </div>
-      <div class="form-group">
-        <p style="color:var(--text-sub)">เข้าสู่ระบบถูกปิดชั่วคราว — คุณจะถูกตั้งเป็นผู้ใช้งานทั่วไป (Guest)</p>
+      <div class="steps-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="step-item reveal">
+          <div class="step-icon-wrapper" style="background: #dbeafe; color: #1e40af;">
+            <i class="fas fa-search"></i>
+          </div>
+          <strong style="display: block; margin-bottom: 8px;">การกรองข้อมูล</strong>
+          <p style="font-size: 12px; color: var(--text-sub);">พิมพ์เลขใบงาน (RN) หรือรายละเอียดในช่องค้นหาเพื่อเข้าถึงงานที่ต้องการได้อย่างรวดเร็ว</p>
+        </div>
+        <div class="step-item reveal">
+          <div class="step-icon-wrapper" style="background: #fef9c3; color: #854d0e;">
+            <i class="fas fa-tasks"></i>
+          </div>
+          <strong style="display: block; margin-bottom: 8px;">การติดตามสถานะ</strong>
+          <p style="font-size: 12px; color: var(--text-sub);">ระบบจัดหมวดหมู่งานตามสถานะ เพื่อให้คุณทราบว่างานใดกำลังตัดเย็บหรือพร้อมส่งมอบแล้ว</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Auth Section (Enabled) -->
+    <section id="auth-view" class="view reveal">
+      <!-- Login Form -->
+      <div id="login-form" class="form-group fade-in">
+        <div class="section-header">
+          <h2><i class="fas fa-sign-in-alt"></i> เข้าสู่ระบบลูกค้า</h2>
+          <p>เข้าใช้งานเพื่อติดตามงานและบันทึกสัดส่วนร่างกาย</p>
+        </div>
+        <div class="input-item">
+          <label>ชื่อผู้ใช้งาน</label>
+          <input type="text" id="login-username" placeholder="Username (user1)">
+        </div>
+        <div class="input-item">
+          <label>รหัสผ่าน</label>
+          <input type="password" id="login-password" placeholder="Password (1234)">
+        </div>
+        <label style="font-size: 13px; color: var(--text-sub); display: flex; align-items: center; gap: 5px; cursor: pointer;">
+          <input type="checkbox" id="login-remember"> จดจำฉันในระบบ
+        </label>
+        <button class="btn-primary" onclick="loginCustomer()">เข้าสู่ระบบ</button>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:15px;">
+          <a href="#" onclick="fillDemoLogin('customer_demo')" class="btn-demo" style="flex:1; min-width:100px; margin-top:0;">
+            <i class="fas fa-user"></i> Demo ลูกค้า
+          </a>
+          <a href="#" onclick="fillDemoLogin('tailor_demo')" class="btn-demo" style="flex:1; min-width:100px; margin-top:0;">
+            <i class="fas fa-cut"></i> Demo ช่าง
+          </a>
+          <a href="#" onclick="fillDemoLogin('boss_demo')" class="btn-demo" style="flex:1; min-width:100px; margin-top:0;">
+            <i class="fas fa-user-shield"></i> Demo Boss
+          </a>
+        </div>
+        <div style="display:flex; justify-content: space-between; font-size: 13px; margin-top: 10px;">
+          <a href="#" onclick="toggleAuth('register')" style="color: var(--primary);">สมัครสมาชิกใหม่</a>
+          <a href="#" onclick="toggleAuth('forgot')" style="color: var(--text-sub);">ลืมรหัสผ่าน?</a>
+        </div>
+      </div>
+
+      <!-- Register Form -->
+      <div id="register-form" class="form-group fade-in" style="display:none;">
+        <div class="section-header">
+          <h2><i class="fas fa-user-plus"></i> สมัครสมาชิก</h2>
+          <p>เข้าร่วมเป็นส่วนหนึ่งกับ TailorHub</p>
+        </div>
+        <div class="input-item">
+          <label>ชื่อ-นามสกุล</label>
+          <input type="text" id="reg-fullname" placeholder="ชื่อ-นามสกุลจริง">
+        </div>
+        <div class="input-item">
+          <label>ชื่อผู้ใช้งาน</label>
+          <input type="text" id="reg-username" placeholder="Username">
+        </div>
+        <div class="input-item">
+          <label>เบอร์โทรศัพท์</label>
+          <input type="tel" id="reg-phone" placeholder="08x-xxx-xxxx">
+        </div>
+        <div class="input-item">
+          <label>รหัสผ่าน</label>
+          <input type="password" id="reg-password" placeholder="Password">
+        </div>
+        <button class="btn-primary" onclick="registerCustomer()">สมัครสมาชิก</button>
+        <p style="text-align:center; font-size:13px; margin-top: 15px;">
+          มีบัญชีอยู่แล้ว? <a href="#" onclick="toggleAuth('login')" style="color: var(--primary);">เข้าสู่ระบบที่นี่</a>
+        </p>
+      </div>
+
+      <!-- Forgot Password Form -->
+      <div id="forgot-form" class="form-group fade-in" style="display:none;">
+        <div class="section-header">
+          <h2><i class="fas fa-key"></i> กู้คืนรหัสผ่าน</h2>
+          <p>ยืนยันตัวตนด้วยชื่อผู้ใช้และเบอร์โทรศัพท์</p>
+        </div>
+        <div class="input-item">
+          <input type="text" id="forgot-username" placeholder="Username">
+          <input type="tel" id="forgot-phone" placeholder="เบอร์โทรศัพท์">
+          <input type="password" id="forgot-new-pass" placeholder="รหัสผ่านใหม่">
+        </div>
+        <button class="btn-primary" onclick="handleResetPassword('customer')">ตั้งรหัสผ่านใหม่</button>
+        <p style="text-align:center; font-size:13px; margin-top: 15px;">
+          <a href="#" onclick="toggleAuth('login')" style="color: var(--text-sub);">กลับไปหน้าเข้าสู่ระบบ</a>
+        </p>
       </div>
     </section>
 
@@ -176,6 +270,146 @@
       </div>
       </div>
 
+    <!-- Completion Receipt Modal -->
+    <div id="completion-receipt-modal" class="modal" style="display:none;">
+      <div class="receipt-content" id="completion-receipt-to-print" style="max-width: 500px; text-align: left;">
+        <div class="receipt-header" style="text-align: center; margin-bottom: 20px;">
+          <i class="fas fa-check-circle" style="font-size: 48px; color: var(--success);"></i>
+          <h3 style="margin: 10px 0 5px; font-size: 20px; color: var(--primary);">ใบแจ้งงานเสร็จสมบูรณ์</h3>
+          <p style="font-size: 14px; color: var(--text-sub);">ขอบคุณที่ใช้บริการ TailorHub Premium Marketplace</p>
+        </div>
+        <div style="border-top: 1px dashed #ccc; padding-top: 15px; margin-top: 15px;">
+          <p><strong>เลขที่งาน (RN):</strong> <span id="cr-rn"></span></p>
+          <p><strong>สถานะ:</strong> <span id="cr-status"></span></p>
+          <p><strong>วันที่เสร็จ:</strong> <span id="cr-finished-date"></span></p>
+          <p><strong>ชื่อลูกค้า:</strong> <span id="cr-customer-name"></span></p>
+          <p><strong>รายละเอียดงาน:</strong> <span id="cr-job-detail"></span></p>
+          <p><strong>ประเภทชุด:</strong> <span id="cr-category"></span></p>
+          <p><strong>งบประมาณ:</strong> ฿<span id="cr-budget"></span></p>
+          <p><strong>ช่างผู้ดูแล:</strong> <span id="cr-tailor-name"></span></p>
+        </div>
+        <div style="border-top: 1px dashed #ccc; padding-top: 15px; margin-top: 15px;">
+          <h4 style="font-size: 16px; margin-bottom: 10px; color: var(--primary);">สัดส่วนร่างกาย (นิ้ว)</h4>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 13px;">
+            <div><strong>อก:</strong> <span id="cr-chest">-</span></div>
+            <div><strong>เอว:</strong> <span id="cr-waist">-</span></div>
+            <div><strong>สะโพก:</strong> <span id="cr-hips">-</span></div>
+            <div><strong>ยาว:</strong> <span id="cr-length">-</span></div>
+            <div><strong>ไหล่:</strong> <span id="cr-shoulder">-</span></div>
+          </div>
+        </div>
+        <div id="cr-progress-photo-container" style="text-align: center; margin-top: 20px; display: none;">
+          <h4 style="font-size: 16px; margin-bottom: 10px; color: var(--primary);">รูปความคืบหน้าสุดท้าย</h4>
+          <img id="cr-progress-photo" src="" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #eee;">
+        </div>
+        <div id="cr-rating-container" style="text-align: center; margin-top: 20px; display: none;">
+          <h4 style="font-size: 16px; margin-bottom: 10px; color: var(--primary);">คะแนนความพึงพอใจ</h4>
+          <div id="cr-rating-stars" class="rating-stars" style="font-size: 28px;"></div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button class="btn-primary" style="flex: 1;" onclick="downloadCompletionReceipt()"><i class="fas fa-download"></i> ดาวน์โหลดเป็นรูปภาพ</button>
+        <button class="btn-secondary" style="flex: 1;" onclick="document.getElementById('completion-receipt-modal').style.display='none'">ปิด</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Navigation for Mobile -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="location.href='index.html'">
+      <i class="fas fa-home"></i>
+      <span>หน้าหลัก</span>
+    </div>
+    <div class="nav-item" onclick="switchCustomerTab('history')">
+      <i class="fas fa-list"></i>
+      <span>งานของฉัน</span>
+    </div>
+    <div class="nav-item" onclick="switchCustomerTab('notifications')">
+      <i class="fas fa-bell"></i>
+      <span>แจ้งเตือน</span>
+    </div>
+    <div class="nav-item" onclick="location.href='portfolio.html'">
+      <i class="fas fa-project-diagram"></i>
+      <span>ผลงาน</span>
+    </div>
+    <div class="nav-item" onclick="location.href='contact.html'">
+      <i class="fas fa-phone"></i>
+      <span>ติดต่อ</span>
+    </div>
+  </div>
+
+  <script src="script.js" defer></script>
+  <!-- Floating Admin Access -->
+  <div id="admin-fab" class="admin-fab" style="position:fixed; right:18px; bottom:18px; z-index:9999;">
+    <button id="admin-fab-btn" class="btn-pill" style="padding:10px 12px; display:flex; align-items:center; gap:8px;">
+      <i class="fas fa-tools"></i> Admin
+    </button>
+    <div id="admin-fab-menu" class="admin-fab-menu" style="display:none; position:absolute; right:0; bottom:56px;">
+      <a href="tailor.html" class="btn-secondary" style="display:block; margin-bottom:6px;">แดชบอร์ด</a>
+      <a href="stock.html" class="btn-secondary" style="display:block; margin-bottom:6px;">คลังสินค้า</a>
+      <a href="#" class="btn-secondary" onclick="becomeDemoBoss()" style="display:block; margin-bottom:6px;">เข้าสู่ระบบ (Demo Boss)</a>
+      <a href="index.html" class="btn-secondary" style="display:block;">กลับหน้าเว็บ</a>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      checkCustomerAuth();
+      if (typeof initScrollReveal === 'function') initScrollReveal();
+      if (typeof initPortalLongPress === 'function') initPortalLongPress();
+      const _role = sessionStorage.getItem('userRole') || localStorage.getItem('userRole') || 'guest';
+
+      const fabBtn = document.getElementById('admin-fab-btn');
+      const fabMenu = document.getElementById('admin-fab-menu');
+      // Show FAB only for boss role
+      const currentRole = sessionStorage.getItem('userRole') || localStorage.getItem('userRole') || 'guest';
+      if (fabBtn && fabMenu) {
+        if (currentRole !== 'boss') {
+          // hide FAB for non-boss
+          document.getElementById('admin-fab').style.display = 'none';
+        } else {
+          document.getElementById('admin-fab').style.display = 'block';
+          fabBtn.addEventListener('click', () => { fabMenu.style.display = fabMenu.style.display === 'block' ? 'none' : 'block'; });
+          document.addEventListener('click', (e) => { if (!fabBtn.contains(e.target) && !fabMenu.contains(e.target)) fabMenu.style.display = 'none'; });
+        }
+      }
+      // Demo helpers to switch roles quickly for testing/demo
+      window.becomeDemoBoss = function() {
+        sessionStorage.setItem('userRole', 'boss');
+        sessionStorage.setItem('userName', 'Demo Boss');
+        sessionStorage.setItem('userId', 'ADMIN-001');
+        // persist in localStorage optionally for demo convenience
+        localStorage.setItem('userRole', 'boss');
+        localStorage.setItem('userName', 'Demo Boss');
+        localStorage.setItem('userId', 'ADMIN-001');
+        location.href = 'boss.html';
+      };
+
+      window.becomeDemoTailor = function() {
+        sessionStorage.setItem('userRole', 'tailor');
+        sessionStorage.setItem('userName', 'Demo Tailor');
+        sessionStorage.setItem('userId', 'TAILOR-001');
+        localStorage.setItem('userRole', 'tailor');
+        localStorage.setItem('userName', 'Demo Tailor');
+        localStorage.setItem('userId', 'TAILOR-001');
+        // go to tailor dashboard (will prompt login overlay if needed)
+        location.href = 'tailor.html';
+      };
+
+      window.becomeDemoCustomer = function() {
+        sessionStorage.setItem('userRole', 'customer');
+        sessionStorage.setItem('userName', 'Demo Customer');
+        sessionStorage.setItem('userId', 'CUST-DEM-001');
+        localStorage.setItem('userRole', 'customer');
+        localStorage.setItem('userName', 'Demo Customer');
+        localStorage.setItem('userId', 'CUST-DEM-001');
+        // show customer view immediately
+        try { checkCustomerAuth(); switchCustomerTab && switchCustomerTab('order'); } catch(e) { }
+      };
+    });
+  </script>
+</body>
+</html>
       <div id="order-history-section" style="display:none;">
         <div class="section-header">
           <h2><i class="fas fa-history"></i> ติดตามสถานะงาน</h2>
@@ -296,9 +530,9 @@
       <i class="fas fa-bell"></i>
       <span>แจ้งเตือน</span>
     </div>
-    <div class="nav-item" onclick="location.href='present.html'">
-      <i class="fas fa-project-diagram"></i>
-      <span>วิธีใช้งาน</span>
+    <div class="nav-item" onclick="location.href='portfolio.html'">
+      <i class="fas fa-images"></i>
+      <span>ผลงาน</span>
     </div>
     <div class="nav-item" onclick="location.href='contact.html'">
       <i class="fas fa-phone"></i>
@@ -321,12 +555,6 @@
   </div>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Guest mode: set a temporary guest session so the site works without login
-      if (!sessionStorage.getItem('userId') && !localStorage.getItem('userId')) {
-        sessionStorage.setItem('userRole', 'guest');
-        sessionStorage.setItem('userName', 'Guest User');
-        sessionStorage.setItem('userId', 'GUEST-001');
-      }
       checkCustomerAuth();
       if (typeof initScrollReveal === 'function') initScrollReveal();
       if (typeof initPortalLongPress === 'function') initPortalLongPress();
@@ -365,7 +593,7 @@
         localStorage.setItem('userRole', 'boss');
         localStorage.setItem('userName', 'Demo Boss');
         localStorage.setItem('userId', 'ADMIN-001');
-        location.href = 'tailor.html';
+        location.href = 'boss.html';
       };
 
       window.becomeDemoTailor = function() {

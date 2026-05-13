@@ -11,6 +11,7 @@ const JOBS_PER_PAGE = 10; // จำนวนงานที่แสดงต่
 let currentPage = 1;
 let revenueChartInstance = null; // เก็บ Instance ของกราฟรายได้
 let categoryChartInstance = null; // เก็บ Instance ของกราฟประเภทชุด
+let tailorMonthlyChartInstance = null; // เก็บ Instance ของกราฟผลงานช่าง
 
 // ฟังก์ชัน Debounce เพื่อลดภาระเครื่องเวลาพิมพ์ค้นหา
 function debounce(func, timeout = 300) {
@@ -137,16 +138,33 @@ async function loginBoss() {
   btn.disabled = true;
   btn.innerText = "กำลังตรวจสอบ...";
 
-  // Local Bypass สำหรับ Admin Demo (เข้าถึงได้ทุกอย่าง)
+  // Local Bypass สำหรับ Demo Roles
   if (username === "admin" && password === "1234") {
     const adminUser = { user_id: "ADMIN-001", full_name: "ผู้ดูแลระบบ (Master Admin)", role: "boss" };
     sessionStorage.setItem("userRole", adminUser.role);
     sessionStorage.setItem("userName", adminUser.full_name);
     sessionStorage.setItem("userId", adminUser.user_id);
-    if (remember) {
-      localStorage.setItem("userRole", adminUser.role);
-    }
+    if (remember) localStorage.setItem("userRole", adminUser.role);
     return checkAuth();
+  }
+  
+  if (username === "tailor1" && password === "1234") {
+    const tailorUser = { user_id: "TAILOR-001", full_name: "ช่างสมชาย (Demo)", role: "tailor" };
+    sessionStorage.setItem("userRole", tailorUser.role);
+    sessionStorage.setItem("userName", tailorUser.full_name);
+    sessionStorage.setItem("userId", tailorUser.user_id);
+    if (remember) localStorage.setItem("userRole", tailorUser.role);
+    return checkAuth();
+  }
+
+  if (username === "user1" && password === "1234") {
+    const customerUser = { user_id: "CUST-001", full_name: "คุณลูกค้า (Demo)", role: "customer" };
+    sessionStorage.setItem("userRole", customerUser.role);
+    sessionStorage.setItem("userName", customerUser.full_name);
+    sessionStorage.setItem("userId", customerUser.user_id);
+    if (remember) localStorage.setItem("userRole", customerUser.role);
+    location.href = 'index.html';
+    return;
   }
 
   try {
@@ -227,16 +245,33 @@ async function loginCustomer() {
   };
   const remember = document.getElementById('login-remember').checked;
 
-  // Local Bypass สำหรับ Admin Demo (เข้าหน้าลูกค้าได้ด้วยสิทธิ์ Boss)
+  // Local Bypass สำหรับ Demo Roles
   if (data.username === "admin" && data.password === "1234") {
     const adminUser = { user_id: "ADMIN-001", full_name: "ผู้ดูแลระบบ (Master Admin)", role: "boss" };
     sessionStorage.setItem("userRole", adminUser.role);
     sessionStorage.setItem("userName", adminUser.full_name);
     sessionStorage.setItem("userId", adminUser.user_id);
-    if (remember) {
-      localStorage.setItem("userRole", adminUser.role);
-    }
+    if (remember) localStorage.setItem("userRole", adminUser.role);
     return checkCustomerAuth();
+  }
+
+  if (data.username === "user1" && data.password === "1234") {
+    const customerUser = { user_id: "CUST-001", full_name: "คุณลูกค้า (Demo)", role: "customer" };
+    sessionStorage.setItem("userRole", customerUser.role);
+    sessionStorage.setItem("userName", customerUser.full_name);
+    sessionStorage.setItem("userId", customerUser.user_id);
+    if (remember) localStorage.setItem("userRole", customerUser.role);
+    return checkCustomerAuth();
+  }
+
+  if (data.username === "tailor1" && data.password === "1234") {
+    const tailorUser = { user_id: "TAILOR-001", full_name: "ช่างสมชาย (Demo)", role: "tailor" };
+    sessionStorage.setItem("userRole", tailorUser.role);
+    sessionStorage.setItem("userName", tailorUser.full_name);
+    sessionStorage.setItem("userId", tailorUser.user_id);
+    if (remember) localStorage.setItem("userRole", tailorUser.role);
+    location.href = 'tailor.html';
+    return;
   }
 
   try {
@@ -270,9 +305,10 @@ async function loginCustomer() {
 }
 
 function logoutCustomer() {
+  if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?")) return;
   sessionStorage.clear();
   localStorage.clear();
-  location.reload();
+  location.href = 'index.html';
 }
 
 function checkCustomerAuth() {
@@ -286,13 +322,14 @@ function checkCustomerAuth() {
   const bossReturn = document.getElementById("boss-return-link");
 
   if (role) {
-    if (authView) authView.classList.add('hidden');
+    if (authView) authView.style.display = 'none'; // Ensure it's hidden
     if (customerView) { customerView.classList.remove('hidden'); customerView.classList.add('fade-in'); }
     if (portalAccessContainer) portalAccessContainer.classList.add('hidden');
     if (profileHeader) profileHeader.classList.remove('hidden');
 
     if (role === 'boss' && bossReturn) {
       bossReturn.classList.remove('hidden');
+      checkPendingPayrollAlert(); // ตรวจสอบคำขอเบิกเงินเมื่อเป็นบอส
     }
 
     if (document.getElementById("display-user-name")) {
@@ -308,7 +345,7 @@ function checkCustomerAuth() {
       }).catch(() => {});
     }
   } else {
-    if (authView) authView.classList.remove('hidden');
+    if (authView) authView.style.display = 'block'; // Ensure it's visible
     if (customerView) customerView.classList.add('hidden');
   }
 }
@@ -381,15 +418,26 @@ function checkAuth() {
 
   if (role === 'boss' || role === 'tailor') {
     if (loginOverlay) loginOverlay.classList.add('hidden');
-    if (mainContent) { mainContent.classList.remove('hidden'); mainContent.classList.add('fade-in'); }
-    if (tailorView) tailorView.classList.remove('hidden');
+    if (mainContent) { mainContent.style.display = 'block'; mainContent.classList.remove('hidden'); mainContent.classList.add('fade-in'); }
+    if (tailorView) { tailorView.style.display = 'block'; tailorView.classList.remove('hidden'); }
     
-    // จัดการการแสดงผลตามสิทธิ์
+    // จัดการการแสดงผลตามสิทธิ์ (แยกส่วนบอสและส่วนช่าง)
     const isBoss = role === 'boss';
+    const isTailor = role === 'tailor';
+
     document.querySelectorAll('.boss-only').forEach(el => {
         if (isBoss) el.classList.remove('hidden');
         else el.classList.add('hidden');
     });
+
+    document.querySelectorAll('.tailor-only').forEach(el => {
+        if (isTailor) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+    });
+
+    // แสดงชื่อช่างในหน้า Hero
+    const nameDisplay = document.getElementById('tailor-name-display');
+    if (nameDisplay) nameDisplay.innerText = name;
     
     // เริ่มต้นหน้า Dashboard ด้วยแท็บงานใหม่
     setTimeout(() => {
@@ -450,8 +498,12 @@ async function loadCustomerJobs() {
           actionButtons = `<button class="btn-primary" style="width:100%;margin-top:10px;background:var(--success);" onclick="confirmAndRateJob('${job.id}')"><i class="fas fa-star"></i> ยืนยันรับงานและให้คะแนน</button><button class="btn-logout" style="width:100%;margin-top:5px;border-color:var(--secondary);color:var(--secondary);" onclick="requestRevision('${job.id}')"><i class="fas fa-tools"></i> ขอแก้ไขงาน/ส่งเคลม</button>`;
         } else if (job.status === 'finished' && job.rating) {
           actionButtons = `${ratingStars}<button class="btn-primary" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#5b21b6,#7c3aed);" onclick="payFinalPrice('${job.id}', ${Number(job.budget) || 0})"><i class="fas fa-credit-card"></i> ชำระเงินงวดสุดท้าย ฿${Number(job.budget).toLocaleString()}</button>`;
+          // Add completion receipt button here
+          actionButtons += `<button class="btn-secondary" style="width:100%;margin-top:8px;" onclick="showCompletionReceipt('${job.id}')"><i class="fas fa-file-alt"></i> ดาวน์โหลดใบแจ้งงาน</button>`;
         } else if (job.status === 'paid') {
           actionButtons = `${ratingStars}<div style="margin-top:8px;padding:8px 12px;background:#ede9fe;border-radius:10px;color:#5b21b6;font-size:13px;display:flex;align-items:center;gap:6px;"><i class="fas fa-check-circle"></i> ชำระเงินเรียบร้อยแล้ว ฿${Number(job.budget).toLocaleString()}</div>`;
+          // Add completion receipt button here
+          actionButtons += `<button class="btn-secondary" style="width:100%;margin-top:8px;" onclick="showCompletionReceipt('${job.id}')"><i class="fas fa-file-alt"></i> ดาวน์โหลดใบแจ้งงาน</button>`;
         } else {
           actionButtons = ratingStars;
         }
@@ -512,11 +564,20 @@ async function loadJobs(filterType = 'pending', forceRefresh = false) {
     const data = await response.json();
     currentViewData = data;
     
+    const myName = sessionStorage.getItem("userName") || localStorage.getItem("userName");
+    const role = sessionStorage.getItem("userRole") || localStorage.getItem("userRole");
+
     // กรองข้อมูลตาม Tab ที่เลือก
     if (filterType === 'pending') {
       allPendingJobs = data.jobs.filter(j => j.status === 'pending');
+    } else if (filterType === 'active') {
+      // ถ้าเป็นช่าง ให้ดูเฉพาะงานที่ตัวเองรับไว้
+      allPendingJobs = data.jobs.filter(j => 
+        (j.status === 'accepted' || j.status === 'sewing') && 
+        (role === 'boss' || j.tailor_name === myName)
+      );
     } else {
-      allPendingJobs = data.jobs.filter(j => j.status === 'accepted' || j.status === 'sewing');
+      allPendingJobs = data.jobs;
     }
 
     currentFilteredJobs = allPendingJobs;
@@ -546,6 +607,8 @@ async function loadJobs(filterType = 'pending', forceRefresh = false) {
         renderUsers(data.users);
         renderTailorStats(data.jobs, data.payroll);
         renderPayrollManager(data.payroll);
+        renderAttendanceManager(data.attendance);
+        renderSystemLogs(data.logs);
       } catch (e) { console.warn('deferred user/payroll render failed', e); }
     });
   } catch (error) {
@@ -606,12 +669,54 @@ function switchTab(type) {
     perfSections.forEach(el => el.style.display = 'none');
     if (payrollMgmtSection) payrollMgmtSection.style.display = 'block';
     renderPayrollManager(currentViewData.payroll || []);
+  } else if (type === 'attendance') {
+    jobList.style.display = 'none';
+    searchContainer.style.display = 'none';
+    perfSections.forEach(el => el.style.display = 'none');
+    document.getElementById('attendance-section').style.display = 'block';
+  } else if (type === 'logs') {
+    jobList.style.display = 'none';
+    searchContainer.style.display = 'none';
+    perfSections.forEach(el => el.style.display = 'none');
+    document.getElementById('logs-section').style.display = 'block';
   } else {
     jobList.style.display = 'grid';
     searchContainer.style.display = 'block';
-    perfSections.forEach(el => el.style.display = 'none');
+
+    // สำหรับ Boss: ถ้าเป็นหน้า 'pending' (ภาพรวม) ให้แสดงกราฟและตารางผลงาน
+    if (type === 'pending' && (sessionStorage.getItem('userRole') === 'boss' || localStorage.getItem('userRole') === 'boss')) {
+        perfSections.forEach(el => {
+            const hideIds = ['user-management-section', 'pl-report-section', 'payroll-management-section', 'attendance-section', 'logs-section', 'rejected-analysis-section', 'stock-mgmt-view'];
+            el.style.display = hideIds.includes(el.id) ? 'none' : 'block';
+        });
+    } else {
+        perfSections.forEach(el => el.style.display = 'none');
+    }
+
     loadJobs(type);
   }
+}
+
+/**
+ * ตรวจสอบคำขอเบิกเงินเดือนที่ยังไม่ได้อนุมัติ (สำหรับแจ้งเตือนบอสในหน้า Index)
+ */
+async function checkPendingPayrollAlert() {
+  const role = sessionStorage.getItem("userRole") || localStorage.getItem("userRole");
+  const alertEl = document.getElementById("boss-pending-alert");
+  if (role !== 'boss' || !alertEl) return;
+
+  try {
+    const response = await fetch(SCRIPT_URL);
+    const data = await response.json();
+    const pendingCount = (data.payroll || []).filter(p => p.status === 'pending').length;
+
+    if (pendingCount > 0) {
+      alertEl.innerHTML = `<i class="fas fa-exclamation-circle" style="font-size: 20px;"></i> <div><strong>แจ้งเตือนบอส:</strong> มีคำขอเบิกเงินเดือนที่รอการอนุมัติจำนวน <strong>${pendingCount} รายการ</strong> <a href="boss.html" style="color: #b91c1c; text-decoration: underline; margin-left: 5px;">คลิกเพื่อไปจัดการ</a></div>`;
+      alertEl.classList.remove('hidden');
+    } else {
+      alertEl.classList.add('hidden');
+    }
+  } catch (e) { console.warn("ไม่สามารถดึงข้อมูลแจ้งเตือนเงินเดือนได้", e); }
 }
 
 function renderStockChart(stock) {
@@ -1090,6 +1195,9 @@ function renderJobs(jobsToRender) { // Renamed parameter for clarity
   const endIndex = startIndex + JOBS_PER_PAGE;
   const paginatedJobs = jobsToRender.slice(startIndex, endIndex);
 
+  const myName = sessionStorage.getItem("userName") || localStorage.getItem("userName");
+  const myRole = sessionStorage.getItem("userRole") || localStorage.getItem("userRole");
+
   const statusLabelMap = { pending: 'รอรับงาน', accepted: 'รับงานแล้ว', sewing: 'กำลังเย็บ', finished: 'เสร็จสมบูรณ์', cancelled: 'ยกเลิกแล้ว', rejected: 'ถูกปฏิเสธ', paid: 'ชำระเงินแล้ว' };
 
   container.innerHTML = paginatedJobs.map(job => {
@@ -1120,13 +1228,14 @@ function renderJobs(jobsToRender) { // Renamed parameter for clarity
       <p><strong>ผู้โพสต์:</strong> ${job.customer_name}</p>
       <p><strong>ติดต่อ:</strong> ${job.customer_phone || '-'}</p>
       <p><strong>งบประมาณ:</strong> ฿${Number(job.budget).toLocaleString()}</p>
+      ${job.tailor_name ? `<p><strong>ช่างผู้ดูแล:</strong> <span class="text-primary">${job.tailor_name}</span></p>` : ''}
 
       ${job.dispute_notes ? `
         <div style="margin:8px 0;padding:10px 14px;background:#fef9c3;border-radius:10px;font-size:13px;color:#854d0e;border:1px solid #facc15;">
           <i class="fas fa-exclamation-triangle"></i> <strong>ลูกค้าส่งเคลม:</strong> ${job.dispute_notes}
         </div>` : ''}
 
-      ${renderActionButtons(job)}
+      ${(myRole === 'boss' || !job.tailor_name || job.tailor_name === myName) ? renderActionButtons(job) : '<p class="small text-sub">ช่างคนอื่นกำลังดำเนินการ</p>'}
     </div>
     `;
   }).join('');
@@ -1319,9 +1428,10 @@ async function updateStatus(id, newStatus) {
 }
 
 function logoutBoss() {
+  if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?")) return;
   sessionStorage.clear(); // ล้างข้อมูล Session ทั้งหมด (role, Name, ID) เพื่อความปลอดภัย
   localStorage.clear();   // ล้างข้อมูลที่จดจำไว้ด้วย
-  location.reload();
+  location.href = 'index.html';
 }
 
 function showReceipt(rn, data) {
@@ -1418,6 +1528,74 @@ async function confirmAndRateJob(id) {
       loadCustomerJobs();
     }
   } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
+// === ใบแจ้งงานเสร็จสมบูรณ์สำหรับลูกค้า ===
+async function showCompletionReceipt(jobId) {
+  const modal = document.getElementById("completion-receipt-modal");
+  if (!modal) return;
+
+  const job = currentViewData.jobs.find(j => j.id === jobId);
+  if (!job) {
+    alert("ไม่พบข้อมูลงาน");
+    return;
+  }
+
+  // Populate modal with job details
+  document.getElementById("cr-rn").innerText = job.rn || '-';
+  document.getElementById("cr-status").innerText = job.status ? (statusLabelMap[job.status] || job.status) : '-';
+  document.getElementById("cr-finished-date").innerText = job.created_at ? new Date(job.created_at).toLocaleDateString('th-TH') : '-';
+  document.getElementById("cr-customer-name").innerText = job.customer_name || '-';
+  document.getElementById("cr-job-detail").innerText = job.job_detail || '-';
+  document.getElementById("cr-category").innerText = job.category || '-';
+  document.getElementById("cr-budget").innerText = Number(job.budget || 0).toLocaleString();
+  document.getElementById("cr-tailor-name").innerText = job.tailor_name || 'รอดำเนินการ';
+
+  // Measurements
+  let m = { chest: '-', waist: '-', hips: '-', length: '-', shoulder: '-' };
+  try {
+    if (job.measurements) {
+      const parsed = JSON.parse(job.measurements);
+      m = { ...m, ...parsed };
+    }
+  } catch (e) { /* ignore parsing errors */ }
+  document.getElementById("cr-chest").innerText = m.chest || '-';
+  document.getElementById("cr-waist").innerText = m.waist || '-';
+  document.getElementById("cr-hips").innerText = m.hips || '-';
+  document.getElementById("cr-length").innerText = m.length || '-';
+  document.getElementById("cr-shoulder").innerText = m.shoulder || '-';
+
+  // Progress Photo
+  const photoContainer = document.getElementById("cr-progress-photo-container");
+  const photoImg = document.getElementById("cr-progress-photo");
+  if (job.progress_photo) {
+    photoImg.src = job.progress_photo;
+    photoContainer.style.display = 'block';
+  } else {
+    photoContainer.style.display = 'none';
+  }
+
+  // Rating
+  const ratingContainer = document.getElementById("cr-rating-container");
+  const ratingStarsEl = document.getElementById("cr-rating-stars");
+  if (job.rating && Number(job.rating) > 0) {
+    ratingStarsEl.innerHTML = `${'★'.repeat(Number(job.rating))}${'☆'.repeat(5 - Number(job.rating))}<span style="font-size:16px;margin-left:10px;color:var(--text-sub);">(${job.rating}/5)</span>`;
+    ratingContainer.style.display = 'block';
+  } else {
+    ratingContainer.style.display = 'none';
+  }
+
+  modal.style.display = 'flex';
+}
+
+async function downloadCompletionReceipt() {
+  const element = document.getElementById("completion-receipt-to-print");
+  if (!element) return;
+  const canvas = await html2canvas(element, { scale: 2 }); // Higher scale for better quality
+  const link = document.createElement("a");
+  link.download = `CompletionReceipt-${document.getElementById("cr-rn").innerText}.png`;
+  link.href = canvas.toDataURL();
+  link.click();
 }
 
 // === แจ้งเตือนลูกค้า: ดึงงานล่าสุดมาแสดงเป็น timeline ===
@@ -1623,14 +1801,30 @@ function initScrollReveal() {
 
 // ฟังก์ชันช่วยเติมข้อมูลสำหรับ Demo เพื่อความสะดวกในการทดสอบ
 function fillDemoLogin(type) {
-  if (type === 'customer') {
-    document.getElementById('login-username').value = "admin";
-    document.getElementById('login-password').value = "1234";
-    loginCustomer();
-  } else {
-    document.getElementById('boss-username').value = "admin";
-    document.getElementById('boss-password').value = "1234";
-    loginBoss();
+  if (type === 'customer_demo') {
+    sessionStorage.setItem("userRole", "customer");
+    sessionStorage.setItem("userName", "คุณลูกค้า (Demo)");
+    sessionStorage.setItem("userId", "CUST-001");
+    if (!location.pathname.includes('index.html')) {
+        location.href = 'index.html';
+    } else {
+        checkCustomerAuth();
+        if (typeof switchCustomerTab === 'function') switchCustomerTab('order');
+    }
+  } else if (type === 'tailor_demo') {
+    sessionStorage.setItem("userRole", "tailor");
+    sessionStorage.setItem("userName", "ช่างสมชาย (Demo)");
+    sessionStorage.setItem("userId", "TAILOR-001");
+    if (!location.pathname.includes('tailor.html')) {
+        location.href = 'tailor.html';
+    } else {
+        checkAuth();
+    }
+  } else if (type === 'boss_demo' || type === 'tailor') {
+    sessionStorage.setItem("userRole", "boss");
+    sessionStorage.setItem("userName", "เจ้าของร้าน (Demo)");
+    sessionStorage.setItem("userId", "ADMIN-001");
+    location.href = 'boss.html';
   }
 }
 
@@ -1744,9 +1938,13 @@ function renderTailorStats(jobs, payroll) {
   // อัปเดตการ์ด
   const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
   setVal('my-available-income', `฿${available.toLocaleString()}`);
+  setVal('my-available-top',    `฿${available.toLocaleString()}`);
   setVal('my-finished-count',   myJobs.length);
   setVal('my-total-wage',       `฿${totalWage.toLocaleString()}`);
   setVal('my-avg-rating',       avgRating ? `${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} (${avgRating})` : 'ยังไม่มี');
+
+  // เรียกใช้ฟังก์ชันวาดกราฟรายเดือน
+  renderTailorMonthlyChart(jobs);
 
   // ประวัติงานที่ทำเสร็จ (WI-T05/T06)
   const jobHistEl = document.getElementById('my-jobs-history');
@@ -1860,6 +2058,9 @@ function renderPayrollManager(payroll) {
               <button class="btn-primary" style="padding:6px 14px; font-size:13px;" onclick="approvePayment('${p.pay_id}')">
                 <i class="fas fa-check"></i> อนุมัติ
               </button>
+              <button class="btn-logout" style="padding:6px 14px; font-size:13px; margin-left:5px;" onclick="rejectPayment('${p.pay_id}')">
+                <i class="fas fa-times"></i> ปฏิเสธ
+              </button>
             </td>
           </tr>
         `).join('')}
@@ -1883,6 +2084,21 @@ async function approvePayment(payId) {
   } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
 }
 
+async function rejectPayment(payId) {
+  if (!confirm("ยืนยันการปฏิเสธคำขอเบิกเงินนี้?")) return;
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "reject_payment", pay_id: payId })
+    });
+    const res = await response.json();
+    if (res.status === "success") {
+      alert("ปฏิเสธเรียบร้อยแล้ว");
+      loadJobs('pending', true);
+    }
+  } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
 // === ช่างอัปเดตรูปความคืบหน้า ===
 async function uploadProgressPhoto(id) {
   const photoUrl = prompt("วางลิงก์รูปภาพความคืบหน้าของงาน:\n(อัปโหลดรูปที่ Google Drive แล้วตั้งค่าให้เปิดได้สาธารณะ)");
@@ -1899,6 +2115,113 @@ async function uploadProgressPhoto(id) {
       loadJobs('active', true);
     }
   } catch (e) { alert("เกิดข้อผิดพลาดในการเชื่อมต่อ"); }
+}
+
+// === Boss: Export Jobs to PDF ===
+async function exportJobsToPdf() {
+  const jobsToExport = currentFilteredJobs.length > 0 ? currentFilteredJobs : currentViewData.jobs;
+  if (jobsToExport.length === 0) {
+    alert("ไม่มีข้อมูลงานให้ Export");
+    return;
+  }
+
+  const pdfExportContent = document.getElementById('pdf-export-content');
+  if (!pdfExportContent) {
+    alert("ไม่พบ Element สำหรับ Export PDF");
+    return;
+  }
+
+  pdfExportContent.innerHTML = ''; // Clear previous content
+
+  const statusLabelMap = { pending: 'รอรับงาน', accepted: 'รับงานแล้ว', sewing: 'กำลังเย็บ', finished: 'เสร็จสมบูรณ์', cancelled: 'ยกเลิกแล้ว', rejected: 'ถูกปฏิเสธ', paid: 'ชำระเงินแล้ว' };
+
+  jobsToExport.forEach(job => {
+    let m = { chest: '-', waist: '-', hips: '-', length: '-', shoulder: '-' };
+    try {
+      if (job.measurements) {
+        const parsed = JSON.parse(job.measurements);
+        m = { ...m, ...parsed };
+      }
+    } catch (e) { /* ignore parsing errors for old data */ }
+
+    const jobHtml = `
+      <div style="page-break-after: always; padding: 20px; font-family: 'Kanit', sans-serif; font-size: 12px; color: #333; background: #fff;">
+        <h2 style="text-align: center; color: #4361ee; margin-bottom: 15px;">ใบสั่งงานตัดเย็บ (Job Order)</h2>
+        <div style="border: 1px solid #eee; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+          <p><strong>เลขที่งาน (RN):</strong> ${job.rn}</p>
+          <p><strong>สถานะ:</strong> ${statusLabelMap[job.status] || job.status}</p>
+          <p><strong>วันที่สร้าง:</strong> ${job.created_at ? new Date(job.created_at).toLocaleDateString('th-TH') : '-'}</p>
+        </div>
+
+        <div style="border: 1px solid #eee; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+          <h3 style="font-size: 14px; color: #4361ee; margin-bottom: 10px;">ข้อมูลลูกค้า</h3>
+          <p><strong>ชื่อลูกค้า:</strong> ${job.customer_name}</p>
+          <p><strong>เบอร์โทร:</strong> ${job.phone || '-'}</p>
+          <p><strong>Line ID:</strong> ${job.line || '-'}</p>
+        </div>
+
+        <div style="border: 1px solid #eee; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+          <h3 style="font-size: 14px; color: #4361ee; margin-bottom: 10px;">รายละเอียดงาน</h3>
+          <p><strong>ประเภทชุด:</strong> ${job.category || '-'}</p>
+          <p><strong>รายละเอียด:</strong> ${job.job_detail}</p>
+          <p><strong>งบประมาณ:</strong> ฿${Number(job.budget).toLocaleString()}</p>
+          <p><strong>ช่างผู้ดูแล:</strong> ${job.tailor_name || 'รอดำเนินการ'}</p>
+        </div>
+
+        <div style="border: 1px solid #eee; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+          <h3 style="font-size: 14px; color: #4361ee; margin-bottom: 10px;">สัดส่วนร่างกาย (นิ้ว)</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <tr>
+              <td style="padding: 5px; border: 1px solid #eee;">อก: ${m.chest || '-'}</td>
+              <td style="padding: 5px; border: 1px solid #eee;">เอว: ${m.waist || '-'}</td>
+              <td style="padding: 5px; border: 1px solid #eee;">สะโพก: ${m.hips || '-'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 5px; border: 1px solid #eee;">ยาว: ${m.length || '-'}</td>
+              <td style="padding: 5px; border: 1px solid #eee;">ไหล่: ${m.shoulder || '-'}</td>
+              <td style="padding: 5px; border: 1px solid #eee;"></td>
+            </tr>
+          </table>
+        </div>
+
+        ${job.progress_photo ? `<div style="text-align: center; margin-top: 20px;"><h3 style="font-size: 14px; color: #4361ee; margin-bottom: 10px;">รูปความคืบหน้า</h3><img src="${job.progress_photo}" style="max-width: 100%; height: auto; border: 1px solid #eee; border-radius: 8px;"></div>` : ''}
+        ${job.dispute_notes ? `<div style="background:#fef9c3; border:1px solid #facc15; padding:10px; border-radius:8px; margin-top:15px; color:#854d0e;"><p><strong>หมายเหตุเคลม:</strong> ${job.dispute_notes}</p></div>` : ''}
+      </div>
+    `;
+    pdfExportContent.insertAdjacentHTML('beforeend', jobHtml);
+  });
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4'); // Portrait, millimeters, A4 size
+    const margin = 10; // mm
+    let yOffset = margin;
+
+    const elements = pdfExportContent.children;
+
+    for (let i = 0; i < elements.length; i++) {
+      const element = elements[i];
+      const canvas = await html2canvas(element, { scale: 2 }); // Higher scale for better quality
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210 - 2 * margin; // A4 width - 2*margin
+      const pageHeight = 297 - 2 * margin; // A4 height - 2*margin
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      if (i > 0) {
+        doc.addPage();
+        yOffset = margin;
+      }
+      doc.addImage(imgData, 'PNG', margin, yOffset, imgWidth, imgHeight);
+    }
+
+    doc.save(`JobOrders_${new Date().toISOString().slice(0, 10)}.pdf`);
+    alert("Export PDF สำเร็จ!");
+  } catch (error) {
+    console.error("Error exporting to PDF:", error);
+    alert("เกิดข้อผิดพลาดในการ Export PDF: " + error.message);
+  } finally {
+    pdfExportContent.innerHTML = ''; // Clean up
+  }
 }
 
 // === Upload helper for Tailor UI (reads file and POSTs base64 to GAS) ===
@@ -1923,11 +2246,10 @@ async function uploadJobImage() {
     if (statusEl) statusEl.innerText = 'กำลังอัพโหลดไฟล์ไปยังเซิร์ฟเวอร์...';
 
     const payload = {
-      action: 'upload_image',
-      job_rn: jobId || null,
-      fileName: file.name,
-      mimeType: file.type,
-      data: base64,
+      action: 'update_status', // ใช้ update_status เพื่ออัปเดต col 17 โดยตรง
+      id: jobId, // หรือใช้ RN
+      status: 'sewing',
+      progress_photo: dataUrl, // ใน Demo นี้ใช้ DataURL (ในระบบจริงควรบันทึกลงคลาวด์)
       actorId: sessionStorage.getItem('userId') || localStorage.getItem('userId') || 'unknown',
       actorRole: sessionStorage.getItem('userRole') || localStorage.getItem('userRole') || 'tailor'
     };
